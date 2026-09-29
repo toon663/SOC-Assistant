@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SOC Assistant | Security Operations Dashboard</title>
+    <link rel="stylesheet" href="/app/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">◈</div>
+          <div>
+            <strong>SOC Assistant</strong>
+            <span>Agentic defense console</span>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Main navigation">
+          <a class="nav-link active" href="#overview"><span>▦</span> Overview</a>
+          <a class="nav-link" href="#incidents"><span>◉</span> Incidents</a>
+          <a class="nav-link" href="#submit"><span>＋</span> Submit event</a>
+          <a class="nav-link" href="/docs" target="_blank" rel="noreferrer"><span>↗</span> API docs</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="safety-card">
+            <div class="safety-icon">✓</div>
+            <div>
+              <strong>Human oversight active</strong>
+              <span>Disruptive actions require approval.</span>
+            </div>
+          </div>
+          <span class="version">SOC Assistant v0.1</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">SECURITY OPERATIONS CENTER</p>
+            <h1>Command overview</h1>
+          </div>
+          <div class="topbar-actions">
+            <span class="connection-pill"><i id="status-dot"></i><span id="status-text">Checking API</span></span>
+            <button class="icon-button" id="refresh-button" title="Refresh dashboard" aria-label="Refresh dashboard">↻</button>
+          </div>
+        </header>
+
+        <section id="overview" class="page-section">
+          <div class="metric-grid">
+            <article class="metric-card accent-blue">
+              <span class="metric-label">Total incidents</span>
+              <strong id="incident-count">—</strong>
+              <span class="metric-foot">Tracked by the pipeline</span>
+            </article>
+            <article class="metric-card accent-red">
+              <span class="metric-label">High-risk queue</span>
+              <strong id="high-risk-count">—</strong>
+              <span class="metric-foot">Requires analyst attention</span>
+            </article>
+            <article class="metric-card accent-green">
+              <span class="metric-label">Contained</span>
+              <strong id="contained-count">—</strong>
+              <span class="metric-foot">Response completed</span>
+            </article>
+            <article class="metric-card accent-gold">
+              <span class="metric-label">Pending approval</span>
+              <strong id="approval-count">—</strong>
+              <span class="metric-foot">Human decision required</span>
+            </article>
+          </div>
+        </section>
+
+        <div class="content-grid">
+          <section id="incidents" class="panel incidents-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">LIVE QUEUE</p>
+                <h2>Recent incidents</h2>
+              </div>
+              <button class="text-button" id="refresh-incidents">Refresh ↻</button>
+            </div>
+            <div id="incident-list" class="incident-list">
+              <div class="empty-state">Loading incidents…</div>
+            </div>
+          </section>
+
+          <section id="submit" class="panel submit-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">INGESTION</p>
+                <h2>Submit security event</h2>
+              </div>
+              <span class="agent-badge">Sentinel</span>
+            </div>
+            <form id="event-form">
+              <label>Event type<input name="event_type" value="suspicious_login" required /></label>
+              <div class="form-row">
+                <label>Severity
+                  <select name="severity">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </label>
+                <label>Source<input name="source" value="manual-console" required /></label>
+              </div>
+              <div class="form-row">
+                <label>User<input name="user" placeholder="analyst@example.com" /></label>
+                <label>Host<input name="host" placeholder="prod-db-01" /></label>
+              </div>
+              <div class="form-row">
+                <label>Source IP<input name="source_ip" placeholder="203.0.113.42" /></label>
+                <label>Destination<input name="destination" placeholder="database" /></label>
+              </div>
+              <label>Message<textarea name="message" rows="3" placeholder="Describe the observed behavior…"></textarea></label>
+              <button class="primary-button" type="submit"><span>Run investigation</span><span>→</span></button>
+              <div id="form-message" class="form-message" role="status"></div>
+            </form>
+          </section>
+        </div>
+
+        <section class="panel workflow-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">AGENT WORKFLOW</p>
+              <h2>Investigation pipeline</h2>
+            </div>
+            <span class="workflow-note">Evidence first · approval gated</span>
+          </div>
+          <div class="workflow">
+            <div class="workflow-step blue"><span>01</span><strong>Sentinel</strong><small>Detect</small></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step blue"><span>02</span><strong>Analyst</strong><small>Triage</small></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step blue"><span>03</span><strong>Prognostic</strong><small>Forecast</small></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step green"><span>04</span><strong>BI</strong><small>Impact</small></div>
+            <div class="workflow-line"></div>
+            <div class="workflow-step green"><span>05</span><strong>Orchestrator</strong><small>Action</small></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/app/app.js"></script>
+  </body>
+</html>
