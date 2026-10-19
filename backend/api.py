@@ -1,6 +1,10 @@
 """"Optional FastAPI interface for submitting and reviewing incidents."""
-
 from __future__ import annotations
+
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+
 
 from dataclasses import asdict
 from typing import Any
@@ -22,6 +26,17 @@ def create_app():
         raise RuntimeError("FastAPI is not installed; run: pip install -r requirements.txt")
 
     app = FastAPI(title=settings.app_name)
+
+    @app.get("/")
+    def root():
+        return {
+            "name": "SOC Multi-Agent Platform",
+            "status": "running",
+            "frontend": "/app/",
+            "docs": "/docs",
+        }
+
+
     systems = IntegrationHub()
     repository = IncidentRepository(settings.database_path)
     pipeline = SecurityOperationsPipeline(systems=systems, require_approval=settings.require_human_approval)
@@ -29,6 +44,8 @@ def create_app():
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
+
+
 
     @app.post("/events")
     def submit_events(payload: dict[str, Any]) -> dict[str, Any]:
@@ -69,7 +86,22 @@ def create_app():
             raise HTTPException(status_code=404, detail="incident not found")
         return incident
 
+
+
+    frontend_dir = Path(__file__).resolve().parent / "frontend"
+
+    app.mount(
+        "/app",
+        StaticFiles(directory=frontend_dir, html=True),
+        name="frontend",
+    )
+
+
+    
     return app
+
+    
+
 
 
 app = create_app() if FastAPI is not None else None

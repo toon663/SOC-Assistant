@@ -80,6 +80,22 @@
                 <p class="eyebrow">LIVE QUEUE</p>
                 <h2>Recent incidents</h2>
               </div>
+            </div>
+            <div class="incident-tools">
+              <input id="incident-search" class="search-input" type="search" placeholder="Search incidents" aria-label="Search incidents" />
+              <select id="severity-filter" aria-label="Filter by severity">
+              <option value="">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              </select>
+              <select id="status-filter" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="approval_required">Pending approval</option>
+              <option value="executed">Executed</option>
+              <option value="blocked_by_policy">Blocked</option>
+              </select>
               <button class="text-button" id="refresh-incidents">Refresh ↻</button>
             </div>
             <div id="incident-list" class="incident-list">
@@ -143,6 +159,16 @@
             <div class="workflow-step green"><span>05</span><strong>Orchestrator</strong><small>Action</small></div>
           </div>
         </section>
+        <aside id="incident-drawer" class="incident-drawer" aria-hidden="true">
+          <div class="drawer-backdrop" data-close-drawer></div>
+          <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+            <div class="drawer-header">
+              <div><p class="eyebrow">INCIDENT DETAIL</p><h2 id="drawer-title">Security incident</h2></div>
+              <button class="icon-button" id="close-drawer" aria-label="Close incident details">×</button>
+            </div>
+            <div id="drawer-content" class="drawer-content"></div>
+          </div>
+        </aside>
       </main>
     </div>
     <script src="/app/app.js"></script>
