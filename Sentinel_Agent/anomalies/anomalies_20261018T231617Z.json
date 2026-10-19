@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "agent": "sentinel_anomaly_agent",
+  "model": "RandomForestClassifier",
+  "detectedAtUtc": "2026-10-18T23:16:17.046451+00:00",
+  "sourceFile": "..\\Event_Gatherer\\events\\sample_events.json",
+  "sourceEventCount": 10,
+  "anomalyCount": 1,
+  "threshold": 0.5,
+  "threatIntel": {
+    "fetchedAtUtc": "2026-10-18T23:16:12.569094+00:00",
+    "sources": {
+      "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+      "mitreCar": "https://github.com/mitre-attack/car",
+      "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    },
+    "stats": {
+      "attackWindowsAnalytics": 476,
+      "attackMappedKeys": 140,
+      "attackNativeEventIds": 59,
+      "cisaKevCount": 1748,
+      "cisaKeywords": 400,
+      "totalMappedKeys": 140
+    }
+  },
+  "anomalies": [
+    {
+      "anomalyId": "rf-5586-9",
+      "detectedAtUtc": "2026-10-18T23:16:17.041511+00:00",
+      "sourceFile": "..\\Event_Gatherer\\events\\sample_events.json",
+      "computerName": "DatabaseII",
+      "score": 0.5,
+      "modelScore": 0.2387,
+      "threshold": 0.5,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-18T23:16:12.569094+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "totalMappedKeys": 140
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5586,
+        "timeCreatedUtc": "2026-10-18T22:42:00.7345308Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 6620,
+        "message": "svchost (6620,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    }
+  ]
+}

@@ -1,0 +1,3201 @@
+{
+  "schemaVersion": 1,
+  "agent": "sentinel_anomaly_agent",
+  "model": "RandomForestClassifier",
+  "detectedAtUtc": "2026-10-19T01:49:08.308954+00:00",
+  "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+  "sourceEventCount": 502,
+  "anomalyCount": 64,
+  "threshold": 0.55,
+  "threatIntel": {
+    "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+    "sources": {
+      "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+      "mitreCar": "https://github.com/mitre-attack/car",
+      "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    },
+    "stats": {
+      "attackWindowsAnalytics": 476,
+      "attackMappedKeys": 140,
+      "attackNativeEventIds": 59,
+      "cisaKevCount": 1748,
+      "cisaKeywords": 400,
+      "carAnalyticsFetched": 102,
+      "carAnalyticsErrors": 0,
+      "carNativeEventIds": 9,
+      "totalMappedKeys": 149
+    }
+  },
+  "anomalies": [
+    {
+      "anomalyId": "rf-24206-226",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24206,
+        "timeCreatedUtc": "2026-10-18T21:40:33.6168654Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24207-227",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24207,
+        "timeCreatedUtc": "2026-10-18T21:40:33.9080546Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24208-228",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24208,
+        "timeCreatedUtc": "2026-10-18T21:40:33.9281164Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24209-229",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24209,
+        "timeCreatedUtc": "2026-10-18T21:40:33.9507278Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24210-230",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24210,
+        "timeCreatedUtc": "2026-10-18T21:40:33.9679615Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24211-231",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24211,
+        "timeCreatedUtc": "2026-10-18T21:40:33.9984506Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24212-232",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24212,
+        "timeCreatedUtc": "2026-10-18T21:40:34.0225196Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24213-233",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24213,
+        "timeCreatedUtc": "2026-10-18T21:40:34.0987268Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24214-234",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24214,
+        "timeCreatedUtc": "2026-10-18T21:40:34.1191332Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24215-235",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24215,
+        "timeCreatedUtc": "2026-10-18T21:40:34.1456182Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24216-236",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24216,
+        "timeCreatedUtc": "2026-10-18T21:40:34.1595518Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24217-237",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24217,
+        "timeCreatedUtc": "2026-10-18T21:40:34.1796620Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24218-238",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24218,
+        "timeCreatedUtc": "2026-10-18T21:40:34.2036117Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24219-239",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24219,
+        "timeCreatedUtc": "2026-10-18T21:40:34.2201884Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24220-240",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24220,
+        "timeCreatedUtc": "2026-10-18T21:40:34.3487417Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24221-241",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24221,
+        "timeCreatedUtc": "2026-10-18T21:40:34.3816624Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24222-242",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24222,
+        "timeCreatedUtc": "2026-10-18T21:40:34.4125775Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24223-243",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24223,
+        "timeCreatedUtc": "2026-10-18T21:40:34.4357486Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24224-244",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24224,
+        "timeCreatedUtc": "2026-10-18T21:40:34.4837755Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24225-245",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.999,
+      "modelScore": 0.999,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24225,
+        "timeCreatedUtc": "2026-10-18T21:40:34.5177193Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24226-246",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24226,
+        "timeCreatedUtc": "2026-10-18T21:40:34.5417048Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24227-247",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24227,
+        "timeCreatedUtc": "2026-10-18T21:40:34.5676283Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24228-248",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24228,
+        "timeCreatedUtc": "2026-10-18T21:40:34.5885552Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24229-249",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24229,
+        "timeCreatedUtc": "2026-10-18T21:40:34.6076688Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24230-250",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24230,
+        "timeCreatedUtc": "2026-10-18T21:40:34.6291871Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24231-251",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24231,
+        "timeCreatedUtc": "2026-10-18T21:40:34.6465846Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24232-252",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9956,
+      "modelScore": 0.9956,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24232,
+        "timeCreatedUtc": "2026-10-18T21:40:34.6671392Z",
+        "eventId": 10010,
+        "provider": "Microsoft-Windows-DistributedCOM",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "processId": 1220,
+        "message": "The server {AB8902B4-09CA-4BB6-B78D-A8F59079A8D5} did not register with DCOM within the required timeout."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5467-30",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5467,
+        "timeCreatedUtc": "2026-10-18T19:26:46.4804570Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5468-31",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5468,
+        "timeCreatedUtc": "2026-10-18T19:26:47.1350125Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5469-34",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5469,
+        "timeCreatedUtc": "2026-10-18T19:26:47.4687961Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5470-35",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5470,
+        "timeCreatedUtc": "2026-10-18T19:26:47.9040919Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5527-192",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5527,
+        "timeCreatedUtc": "2026-10-18T20:27:00.9309469Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5532-213",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5532,
+        "timeCreatedUtc": "2026-10-18T21:28:00.9063731Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5533-214",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5533,
+        "timeCreatedUtc": "2026-10-18T21:28:01.6997538Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5534-215",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9913,
+      "modelScore": 0.9913,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5534,
+        "timeCreatedUtc": "2026-10-18T21:28:02.2990419Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 5852,
+        "message": "svchost (5852,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24141-120",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9906,
+      "modelScore": 0.9906,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1574.011"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1574.011)",
+        "high-risk eventId 7040"
+      ],
+      "event": {
+        "recordId": 24141,
+        "timeCreatedUtc": "2026-10-18T19:43:07.0299420Z",
+        "eventId": 7040,
+        "provider": "Service Control Manager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1696,
+        "message": "The start type of the IsolationSession service was changed from auto start to demand start."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24170-159",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9906,
+      "modelScore": 0.9906,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1574.011"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1574.011)",
+        "high-risk eventId 7040"
+      ],
+      "event": {
+        "recordId": 24170,
+        "timeCreatedUtc": "2026-10-18T20:01:06.9882980Z",
+        "eventId": 7040,
+        "provider": "Service Control Manager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1696,
+        "message": "The start type of the IsolationSession service was changed from demand start to auto start."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24133-91",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9891,
+      "modelScore": 0.9891,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1574.011"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1574.011)",
+        "high-risk eventId 7040"
+      ],
+      "event": {
+        "recordId": 24133,
+        "timeCreatedUtc": "2026-10-18T19:37:24.1648361Z",
+        "eventId": 7040,
+        "provider": "Service Control Manager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1696,
+        "message": "The start type of the IsolationSession service was changed from auto start to demand start."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24111-63",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9858,
+      "modelScore": 0.9858,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24111,
+        "timeCreatedUtc": "2026-10-18T19:28:12.2061411Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-Kernel-General",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 15652,
+        "message": "The system time has changed to ?2026?-?10?-?18T19:28:12.205506000Z from ?2026?-?10?-?18T19:28:12.205604100Z.\r\nTime Delta: 0 ms\r\n\r\nChange Reason: An application or system component changed the time.\r\nProcess: '\\Device\\HarddiskVolume3\\Windows\\System32\\svchost.exe' (PID 15652).\r\n\r\nRTC time: ?2026?-?10?-?18T12:28:12.205506000Z\r\nCurrent time zone bias: 420\r\nRTC time is in UTC: false\r\nSystem time was based on RTC time: false"
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24236-257",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9858,
+      "modelScore": 0.9858,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24236,
+        "timeCreatedUtc": "2026-10-18T21:40:37.4250488Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-Kernel-General",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 15652,
+        "message": "The system time has changed to ?2026?-?10?-?18T21:40:37.424372600Z from ?2026?-?10?-?18T21:40:37.418540700Z.\r\nTime Delta: 5 ms\r\n\r\nChange Reason: An application or system component changed the time.\r\nProcess: '\\Device\\HarddiskVolume3\\Windows\\System32\\svchost.exe' (PID 15652).\r\n\r\nRTC time: ?2026?-?10?-?18T14:40:37.424372600Z\r\nCurrent time zone bias: 420\r\nRTC time is in UTC: false\r\nSystem time was based on RTC time: false"
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24184-182",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9856,
+      "modelScore": 0.9856,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1574.011"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1574.011)",
+        "high-risk eventId 7040"
+      ],
+      "event": {
+        "recordId": 24184,
+        "timeCreatedUtc": "2026-10-18T20:01:55.5126772Z",
+        "eventId": 7040,
+        "provider": "Service Control Manager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1696,
+        "message": "The start type of the IsolationSession service was changed from auto start to demand start."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24385-435",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9847,
+      "modelScore": 0.9847,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24385,
+        "timeCreatedUtc": "2026-10-18T21:50:28.3669852Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-IsolatedUserMode",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 13464,
+        "message": "Secure Trustlet \\??\\C:\\WINDOWS\\System32\\NgcIso.exe Id 6 and Pid 5636 started with status STATUS_SUCCESS."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24108-60",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9835,
+      "modelScore": 0.9835,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24108,
+        "timeCreatedUtc": "2026-10-18T19:28:12.2050343Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-Kernel-General",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 15652,
+        "message": "The system time has changed to ?2026?-?10?-?18T19:28:12.204248900Z from ?2026?-?10?-?18T19:28:14.199268900Z.\r\nTime Delta: -1995 ms\r\n\r\nChange Reason: An application or system component changed the time.\r\nProcess: '\\Device\\HarddiskVolume3\\Windows\\System32\\svchost.exe' (PID 15652).\r\n\r\nRTC time: ?2026?-?10?-?18T12:28:12.204248900Z\r\nCurrent time zone bias: 420\r\nRTC time is in UTC: false\r\nSystem time was based on RTC time: false"
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24130-85",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9825,
+      "modelScore": 0.9825,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1574.011"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1574.011)",
+        "high-risk eventId 7040"
+      ],
+      "event": {
+        "recordId": 24130,
+        "timeCreatedUtc": "2026-10-18T19:36:51.7285732Z",
+        "eventId": 7040,
+        "provider": "Service Control Manager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1696,
+        "message": "The start type of the IsolationSession service was changed from demand start to auto start."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24417-476",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9821,
+      "modelScore": 0.9821,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24417,
+        "timeCreatedUtc": "2026-10-18T22:02:48.7768568Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-IsolatedUserMode",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 18416,
+        "message": "Secure Trustlet \\??\\C:\\WINDOWS\\System32\\NgcIso.exe Id 6 and Pid 14492 started with status STATUS_SUCCESS."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24372-405",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9818,
+      "modelScore": 0.9818,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24372,
+        "timeCreatedUtc": "2026-10-18T21:41:31.5424132Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-IsolatedUserMode",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 12312,
+        "message": "Secure Trustlet \\??\\C:\\WINDOWS\\System32\\NgcIso.exe Id 6 and Pid 12424 started with status STATUS_SUCCESS."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24140-108",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9799,
+      "modelScore": 0.9799,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1574.011"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1574.011)",
+        "high-risk eventId 7040"
+      ],
+      "event": {
+        "recordId": 24140,
+        "timeCreatedUtc": "2026-10-18T19:42:36.2418927Z",
+        "eventId": 7040,
+        "provider": "Service Control Manager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1696,
+        "message": "The start type of the IsolationSession service was changed from demand start to auto start."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24436-501",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9789,
+      "modelScore": 0.9789,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24436,
+        "timeCreatedUtc": "2026-10-18T22:45:45.2515972Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-IsolatedUserMode",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 12240,
+        "message": "Secure Trustlet \\??\\C:\\WINDOWS\\System32\\NgcIso.exe Id 6 and Pid 21196 started with status STATUS_SUCCESS."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24321-342",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9726,
+      "modelScore": 0.9726,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24321,
+        "timeCreatedUtc": "2026-10-18T21:41:24.9979698Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-IsolatedUserMode",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 1616,
+        "message": "Secure Trustlet \\??\\C:\\WINDOWS\\system32\\lsaiso.exe Id 1 and Pid 1756 started with status STATUS_SUCCESS."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5586-499",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.967,
+      "modelScore": 0.967,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5586,
+        "timeCreatedUtc": "2026-10-18T22:42:00.7345308Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 6620,
+        "message": "svchost (6620,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24147-127",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9647,
+      "modelScore": 0.9647,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24147,
+        "timeCreatedUtc": "2026-10-18T19:46:25.6515364Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-IsolatedUserMode",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 13328,
+        "message": "Secure Trustlet \\??\\C:\\WINDOWS\\System32\\NgcIso.exe Id 6 and Pid 20136 started with status STATUS_SUCCESS."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24279-300",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9544,
+      "modelScore": 0.9544,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24279,
+        "timeCreatedUtc": "2026-10-18T21:41:12.8586181Z",
+        "eventId": 24641,
+        "provider": "Microsoft-Windows-BitLocker-Driver",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 4,
+        "message": "An unexpected error was encountered attempting to retrieve the BitLocker volume master key during restart."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24280-301",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9544,
+      "modelScore": 0.9544,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24280,
+        "timeCreatedUtc": "2026-10-18T21:41:12.8586289Z",
+        "eventId": 24641,
+        "provider": "Microsoft-Windows-BitLocker-Driver",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 4,
+        "message": "An unexpected error was encountered attempting to retrieve the BitLocker volume master key during restart."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24281-302",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9544,
+      "modelScore": 0.9544,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24281,
+        "timeCreatedUtc": "2026-10-18T21:41:12.8586404Z",
+        "eventId": 24641,
+        "provider": "Microsoft-Windows-BitLocker-Driver",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 4,
+        "message": "An unexpected error was encountered attempting to retrieve the BitLocker volume master key during restart."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24287-307",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9459,
+      "modelScore": 0.9459,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1197",
+        "T1489",
+        "T1685.003",
+        "T1686.003",
+        "T1562",
+        "T1562.001"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1197, T1489, T1685.003, T1686.003)",
+        "high-risk eventId 7036"
+      ],
+      "event": {
+        "recordId": 24287,
+        "timeCreatedUtc": "2026-10-18T21:41:14.6514723Z",
+        "eventId": 7036,
+        "provider": "VfpExt",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "None",
+        "userId": null,
+        "processId": 4,
+        "message": "The  service entered the Driver load complete state."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24286-308",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9459,
+      "modelScore": 0.9459,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [
+        "T1197",
+        "T1489",
+        "T1685.003",
+        "T1686.003",
+        "T1562",
+        "T1562.001"
+      ],
+      "cisaMatches": [],
+      "reasons": [
+        "MITRE ATT&CK/CAR mapping (T1197, T1489, T1685.003, T1686.003)",
+        "high-risk eventId 7036"
+      ],
+      "event": {
+        "recordId": 24286,
+        "timeCreatedUtc": "2026-10-18T21:41:14.6514723Z",
+        "eventId": 7036,
+        "provider": "VfpExt",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "None",
+        "userId": null,
+        "processId": 4,
+        "message": "The  service entered the Driver load start state."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24337-359",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9349,
+      "modelScore": 0.9349,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24337,
+        "timeCreatedUtc": "2026-10-18T21:41:25.5838979Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-FilterManager",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 4,
+        "message": "File System Filter 'CldFlt' (Version 10.0, ?2084?-?01?-?01T04:12:18.000000000Z) unloaded successfully."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24064-5",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9326,
+      "modelScore": 0.9326,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24064,
+        "timeCreatedUtc": "2026-10-18T19:26:36.7157464Z",
+        "eventId": 24641,
+        "provider": "Microsoft-Windows-BitLocker-Driver",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": null,
+        "processId": 4,
+        "message": "An unexpected error was encountered attempting to retrieve the BitLocker volume master key during restart."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24065-6",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9326,
+      "modelScore": 0.9326,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24065,
+        "timeCreatedUtc": "2026-10-18T19:26:36.7157877Z",
+        "eventId": 24641,
+        "provider": "Microsoft-Windows-BitLocker-Driver",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "",
+        "userId": null,
+        "processId": 4,
+        "message": "An unexpected error was encountered attempting to retrieve the BitLocker volume master key during restart."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24059-0",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.93,
+      "modelScore": 0.93,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24059,
+        "timeCreatedUtc": "2026-10-18T19:26:35.5001772Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-Kernel-General",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": null,
+        "processId": 4,
+        "message": "The system time has changed to ?2026?-?10?-?18T19:26:35.500000000Z from ?2026?-?10?-?16T02:07:49.469465800Z.\r\nTime Delta: 235126030 ms\r\n\r\nChange Reason: System time synchronized with the hardware clock.\r\nProcess: '' (PID 4).\r\n\r\nRTC time: ?2026?-?10?-?18T12:26:35.500000000Z\r\nCurrent time zone bias: 420\r\nRTC time is in UTC: false\r\nSystem time was based on RTC time: false"
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24081-25",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.9186,
+      "modelScore": 0.9186,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24081,
+        "timeCreatedUtc": "2026-10-18T19:26:39.2559041Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-Power-Troubleshooter",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-19",
+        "processId": 5852,
+        "message": "The system has returned from a low power state.\r\n\r\nSleep Time: ?2026?-?10?-?16T02:07:46.410290600Z\r\nWake Time: ?2026?-?10?-?18T19:26:38.157448500Z\r\n\r\nWake Source: Unknown"
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24264-285",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.8365,
+      "modelScore": 0.8365,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 24264,
+        "timeCreatedUtc": "2026-10-18T21:41:09.7965097Z",
+        "eventId": 1,
+        "provider": "Microsoft-Windows-Hyper-V-Hypervisor",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "System",
+        "task": "",
+        "userId": "S-1-5-18",
+        "processId": 4,
+        "message": "Hypervisor successfully started."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-5565-421",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.7894,
+      "modelScore": 0.7894,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "high-risk eventId 1"
+      ],
+      "event": {
+        "recordId": 5565,
+        "timeCreatedUtc": "2026-10-18T21:43:30.8511938Z",
+        "eventId": 1,
+        "provider": "SecurityCenter",
+        "level": 4,
+        "levelName": "Information",
+        "logName": "Application",
+        "task": "None",
+        "userId": null,
+        "processId": 16576,
+        "message": "The Windows Security Center Service has started."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    },
+    {
+      "anomalyId": "rf-24066-8",
+      "detectedAtUtc": "2026-10-19T01:49:08.297377+00:00",
+      "sourceFile": "C:\\Users\\sandh\\Documents\\College work\\ENGR 295\\SOC-Assistant\\Event_Gatherer\\events\\events_20261018T224748Z.json",
+      "computerName": "DatabaseII",
+      "score": 0.7242,
+      "modelScore": 0.7242,
+      "threshold": 0.55,
+      "model": "RandomForestClassifier",
+      "threatIntel": {
+        "fetchedAtUtc": "2026-10-19T01:46:50.860812+00:00",
+        "sources": {
+          "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+          "mitreCar": "https://github.com/mitre-attack/car",
+          "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+        },
+        "stats": {
+          "attackWindowsAnalytics": 476,
+          "attackMappedKeys": 140,
+          "attackNativeEventIds": 59,
+          "cisaKevCount": 1748,
+          "cisaKeywords": 400,
+          "carAnalyticsFetched": 102,
+          "carAnalyticsErrors": 0,
+          "carNativeEventIds": 9,
+          "totalMappedKeys": 149
+        }
+      },
+      "mitreTechniques": [],
+      "cisaMatches": [],
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 24066,
+        "timeCreatedUtc": "2026-10-18T19:26:37.5605427Z",
+        "eventId": 10317,
+        "provider": "Microsoft-Windows-NDIS",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "System",
+        "task": "PnP",
+        "userId": null,
+        "processId": 4,
+        "message": "Miniport Microsoft Wi-Fi Direct Virtual Adapter #3, {01f21225-a7fc-485c-9f30-ff22d9b26025}, had event Fatal error: The miniport has failed a power transition to operational power"
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    }
+  ]
+}

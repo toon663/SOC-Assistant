@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "collectedAtUtc": "2026-10-18T22:43:28.971594+00:00",
+  "computerName": "DatabaseII",
+  "lookbackHours": 1,
+  "maxEventsPerLog": 2,
+  "logs": [
+    "Security"
+  ],
+  "format": "json",
+  "eventCount": 0,
+  "events": [],
+  "errors": [
+    {
+      "logName": "Security",
+      "message": "Exception calling \".ctor\" with \"1\" argument(s): \"Attempted to perform an unauthorized operation.\""
+    }
+  ]
+}

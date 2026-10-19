@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "collectedAtUtc": "2026-10-18T22:43:07.667464+00:00",
+  "computerName": "DatabaseII",
+  "lookbackHours": 6,
+  "maxEventsPerLog": 5,
+  "logs": [
+    "Application",
+    "System"
+  ],
+  "format": "json",
+  "eventCount": 10,
+  "events": [
+    {
+      "recordId": 24430,
+      "timeCreatedUtc": "2026-10-18T22:05:21.5049021Z",
+      "eventId": 1004,
+      "provider": "mtkwlex",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "System",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 4,
+      "threadId": 456,
+      "task": "None",
+      "opcode": null,
+      "activityId": null,
+      "message": "Scan Timeout Info",
+      "eventData": [
+        "\\Device\\NDMP1",
+        "AAB8AAEAAAAAAAAA7AMCQAAAAAAAAAAACwALABIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      ]
+    },
+    {
+      "recordId": 24431,
+      "timeCreatedUtc": "2026-10-18T22:09:19.8896892Z",
+      "eventId": 10016,
+      "provider": "Microsoft-Windows-DistributedCOM",
+      "level": 3,
+      "levelName": "Warning",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "System",
+      "machineName": "DatabaseII",
+      "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+      "processId": 8,
+      "threadId": 20896,
+      "task": null,
+      "opcode": "Info",
+      "activityId": "637ea0ce-5f49-000a-a612-7f63495fdd01",
+      "message": "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID \r\n{2593F8B9-4EAF-457C-B68A-50F6B8EA6B54}\r\n and APPID \r\n{15C20B67-12E7-4BB6-92BB-7AFF07997402}\r\n to the user DATABASEII\\WorkStation_Admin SID (S-1-5-21-1385857612-4052015501-4271252774-1001) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool.",
+      "eventData": [
+        "application-specific",
+        "Local",
+        "Activation",
+        "{2593F8B9-4EAF-457C-B68A-50F6B8EA6B54}",
+        "{15C20B67-12E7-4BB6-92BB-7AFF07997402}",
+        "DATABASEII",
+        "WorkStation_Admin",
+        "S-1-5-21-1385857612-4052015501-4271252774-1001",
+        "LocalHost (Using LRPC)",
+        "Unavailable",
+        "Unavailable"
+      ]
+    },
+    {
+      "recordId": 24432,
+      "timeCreatedUtc": "2026-10-18T22:16:17.3259826Z",
+      "eventId": 2,
+      "provider": "Microsoft-Windows-IsolatedUserMode",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [],
+      "logName": "System",
+      "machineName": "DatabaseII",
+      "userId": "S-1-5-19",
+      "processId": 14492,
+      "threadId": 20436,
+      "task": null,
+      "opcode": "Info",
+      "activityId": null,
+      "message": "Secure Trustlet Id 6 and Pid 14492 stopped with status STATUS_SUCCESS.",
+      "eventData": [
+        "6",
+        "14492",
+        "0"
+      ]
+    },
+    {
+      "recordId": 24433,
+      "timeCreatedUtc": "2026-10-18T22:17:54.3229386Z",
+      "eventId": 158,
+      "provider": "Microsoft-Windows-Time-Service",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [],
+      "logName": "System",
+      "machineName": "DatabaseII",
+      "userId": "S-1-5-19",
+      "processId": 13440,
+      "threadId": 6112,
+      "task": null,
+      "opcode": "Info",
+      "activityId": null,
+      "message": "The time provider 'VMICTimeProvider' has indicated that the current hardware and operating environment is not supported and has stopped. This behavior is expected for VMICTimeProvider on non-HyperV-guest environments. This may be the expected behavior for the current provider in the current operating environment as well.",
+      "eventData": [
+        "VMICTimeProvider"
+      ]
+    },
+    {
+      "recordId": 5582,
+      "timeCreatedUtc": "2026-10-18T22:32:05.2462565Z",
+      "eventId": 10000,
+      "provider": "Microsoft-Windows-RestartManager",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+      "processId": 1868,
+      "threadId": 8528,
+      "task": null,
+      "opcode": "Info",
+      "activityId": null,
+      "message": "Starting session 1 - ‎2026‎-‎10‎-‎18T22:32:05.245544900Z.",
+      "eventData": [
+        "1",
+        "2026-10-18T22:32:05.2455449Z"
+      ]
+    },
+    {
+      "recordId": 5583,
+      "timeCreatedUtc": "2026-10-18T22:33:10.6401484Z",
+      "eventId": 10001,
+      "provider": "Microsoft-Windows-RestartManager",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": "S-1-5-21-1385857612-4052015501-4271252774-1001",
+      "processId": 1868,
+      "threadId": 8528,
+      "task": null,
+      "opcode": "Info",
+      "activityId": null,
+      "message": "Ending session 1 started ‎2026‎-‎10‎-‎18T22:32:05.245544900Z.",
+      "eventData": [
+        "1",
+        "2026-10-18T22:32:05.2455449Z"
+      ]
+    },
+    {
+      "recordId": 24434,
+      "timeCreatedUtc": "2026-10-18T22:34:58.3306785Z",
+      "eventId": 158,
+      "provider": "Microsoft-Windows-Time-Service",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [],
+      "logName": "System",
+      "machineName": "DatabaseII",
+      "userId": "S-1-5-19",
+      "processId": 13440,
+      "threadId": 10480,
+      "task": null,
+      "opcode": "Info",
+      "activityId": null,
+      "message": "The time provider 'VMICTimeProvider' has indicated that the current hardware and operating environment is not supported and has stopped. This behavior is expected for VMICTimeProvider on non-HyperV-guest environments. This may be the expected behavior for the current provider in the current operating environment as well.",
+      "eventData": [
+        "VMICTimeProvider"
+      ]
+    },
+    {
+      "recordId": 5584,
+      "timeCreatedUtc": "2026-10-18T22:40:26.9853076Z",
+      "eventId": 16394,
+      "provider": "Microsoft-Windows-Security-SPP",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 23040,
+      "threadId": 0,
+      "task": null,
+      "opcode": null,
+      "activityId": null,
+      "message": "Offline downlevel migration succeeded.",
+      "eventData": []
+    },
+    {
+      "recordId": 5585,
+      "timeCreatedUtc": "2026-10-18T22:40:57.3126131Z",
+      "eventId": 16384,
+      "provider": "Microsoft-Windows-Security-SPP",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 23040,
+      "threadId": 0,
+      "task": null,
+      "opcode": null,
+      "activityId": null,
+      "message": "Successfully scheduled Software Protection service for re-start at 2126-09-24T22:40:57Z. Reason: RulesEngine.",
+      "eventData": [
+        "2126-09-24T22:40:57Z",
+        "RulesEngine"
+      ]
+    },
+    {
+      "recordId": 5586,
+      "timeCreatedUtc": "2026-10-18T22:42:00.7345308Z",
+      "eventId": 467,
+      "provider": "ESENT",
+      "level": 2,
+      "levelName": "Error",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 6620,
+      "threadId": 0,
+      "task": "Database Corruption",
+      "opcode": "Info",
+      "activityId": null,
+      "message": "svchost (6620,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0).",
+      "eventData": [
+        "svchost",
+        "6620,D,23,0",
+        "SRUJet: ",
+        "UserIdTimeStamp",
+        "{5C8CF1C7-7257-4F13-B223-970EF5939312}",
+        "C:\\WINDOWS\\system32\\SRU\\SRUDB.dat",
+        "0"
+      ]
+    }
+  ],
+  "errors": []
+}
