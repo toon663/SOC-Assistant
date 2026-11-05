@@ -1,0 +1,10 @@
+# Optional production/runtime dependencies
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+scikit-learn>=1.4,<2.0
+pandas>=2.0,<3.0
+
+# Optional integrations
+# xgboost>=2.0,<3.0
+# llama-index>=0.10
+# cognee>=0.1
