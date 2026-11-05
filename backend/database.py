@@ -37,11 +37,21 @@ class IncidentRepository:
                 action TEXT NOT NULL,
                 payload TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS ingested_events (
+                event_id TEXT PRIMARY KEY,
+                incident_id TEXT NOT NULL
+            );
                 """
             )
             self.connection.commit()
 
-    def save_incident(self, incident: Incident) -> None:
+    def is_event_ingested(self, event_id: str) -> bool:
+        with self._lock:
+            row = self.connection.execute("SELECT 1 FROM ingested_events WHERE event_id = ?", (event_id,)).fetchone()
+        return row is not None
+
+    def save_incident(self, incident: Incident, *, mark_events_ingested: bool = False) -> None:
+        """Persist an incident; optionally record its events so overlapping collections skip them."""
         payload = incident_to_dict(incident)
         with self._lock:
             self.connection.execute(
@@ -53,6 +63,11 @@ class IncidentRepository:
                 "INSERT INTO audit_log (incident_id, timestamp, agent, action, payload) VALUES (?, ?, ?, ?, ?)",
                 [(incident.incident_id, item.get("timestamp", ""), item.get("agent", ""), item.get("action", ""), json.dumps(item)) for item in incident.audit_log],
             )
+            if mark_events_ingested:
+                self.connection.executemany(
+                    "INSERT OR IGNORE INTO ingested_events (event_id, incident_id) VALUES (?, ?)",
+                    [(event.event_id, incident.incident_id) for event in incident.events],
+                )
             self.connection.commit()
 
     def get_incident(self, incident_id: str) -> Optional[dict[str, Any]]:

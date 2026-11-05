@@ -35,9 +35,19 @@ api.py — optional FastAPI service
 
 config.py — environment-backed settings
 
+windows_ingest.py — connects Event_Gatherer and Sentinel_Agent to the agent workflow
+
+Windows event pipeline
+
+Event_Gatherer -> Sentinel_Agent Random Forest -> windows_ingest.py -> Sentinel -> Analyst -> Prognostic -> BI -> Orchestrator -> SQLite and dashboard
+
+Start the API from backend/ and use Collect and investigate on the dashboard, or call the API directly. Reading the Security log requires starting the API from an elevated (Administrator) terminal; without elevation, System and Application are still collected and the response lists the Security error. Repeats are grouped into one incident per host, event, and user. Events that were already processed are skipped, so lookback windows can overlap. Severity comes from Windows and threat-intel evidence; the Random Forest probability only adjusts the anomaly score. Threat intel is read from Sentinel_Agent/intel_cache and is never downloaded during a request.
+
+Event_Gatherer/gatherer.py and Sentinel_Agent/anomaly_agent.py still work as standalone command-line tools.
+
 Run locally
 
-The core workflow uses only the Python standard library:
+Run these commands from backend/. The core workflow uses only the Python standard library:
 
 python agents.py
 python -m unittest discover -s tests -v
@@ -52,6 +62,10 @@ The API exposes:
 GET /health
 
 POST /events
+
+POST /ingest/windows — collect from this host, detect anomalies, and open incidents
+
+POST /ingest/document — do the same for a saved gatherer JSON export
 
 GET /incidents
 

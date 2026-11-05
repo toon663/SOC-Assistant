@@ -61,6 +61,9 @@ class SecurityEvent:
     message: str = ""
     severity: Severity = Severity.LOW
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # Probability (0-1) from an upstream detector such as the Random Forest in
+    # Sentinel_Agent. None means the event was submitted without ML scoring.
+    detector_score: Optional[float] = None
 
 
 @dataclass
@@ -151,7 +154,7 @@ class SentinelAgent:
         if not event_list:
             raise ValueError("At least one security event is required")
 
-        severity_score = max(SEVERITY_SCORE[e.severity] for e in event_list)
+        severity_score = max(self._event_signal(e) for e in event_list)
         unusual_types = {e.event_type.lower() for e in event_list}
         repetition_bonus = min(20.0, max(0, len(event_list) - 1) * 5.0)
         diversity_bonus = 10.0 if len(unusual_types) > 1 else 0.0
@@ -172,10 +175,44 @@ class SentinelAgent:
             "severity": self._severity_from_score(anomaly_score).value,
             "fingerprint": fingerprint,
         }
+        if any(e.detector_score is not None for e in event_list):
+            incident.alert.update(self._detection_details(event_list))
         incident.record(self.name, "detect_anomaly", anomaly_score=incident.anomaly_score)
         incident.record(self.name, "generate_alert", alert=incident.alert)
         incident.record(self.name, "log_incident", normalized_event_count=len(event_list))
         return incident
+
+    @staticmethod
+    def _event_signal(event: SecurityEvent) -> float:
+        """Blend evidence-based severity with the detector's probability.
+
+        The Random Forest is trained on weak labels and scores nearly every hit
+        close to 1.0, so its probability cannot stand in for severity by itself.
+        """
+        severity_score = SEVERITY_SCORE[event.severity]
+        if event.detector_score is None:
+            return severity_score
+        return 0.6 * severity_score + 0.4 * event.detector_score * 100
+
+    @staticmethod
+    def _detection_details(events: List[SecurityEvent]) -> Dict[str, Any]:
+        techniques = sorted(
+            {t for e in events for t in e.metadata.get("mitre_techniques", [])}
+        )
+        reasons = list(
+            dict.fromkeys(r for e in events for r in e.metadata.get("reasons", []))
+        )
+        primary = events[0]
+        return {
+            "summary": (
+                f"Detector flagged {len(events)} event(s) from "
+                f"{primary.destination or primary.source} on "
+                f"{primary.host or 'unknown host'}: {'; '.join(reasons) or 'model score'}."
+            ),
+            "detector_score": max(e.detector_score or 0.0 for e in events),
+            "mitre_techniques": techniques,
+            "detection_reasons": reasons,
+        }
 
     @staticmethod
     def _severity_from_score(score: float) -> Severity:

@@ -20,6 +20,7 @@
         <nav class="nav" aria-label="Main navigation">
           <a class="nav-link active" href="#overview"><span>▦</span> Overview</a>
           <a class="nav-link" href="#incidents"><span>◉</span> Incidents</a>
+          <a class="nav-link" href="#collect"><span>⇣</span> Collect events</a>
           <a class="nav-link" href="#submit"><span>＋</span> Submit event</a>
           <a class="nav-link" href="/docs" target="_blank" rel="noreferrer"><span>↗</span> API docs</a>
         </nav>
@@ -138,6 +139,22 @@
             </form>
           </section>
         </div>
+
+        <section id="collect" class="panel collect-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">WINDOWS EVENT VIEWER</p>
+              <h2>Collect and scan this host</h2>
+            </div>
+            <span class="agent-badge">Gatherer → Random Forest</span>
+          </div>
+          <form id="collect-form" class="collect-form">
+            <label>Lookback (hours)<input name="hours" type="number" min="1" max="720" value="24" required /></label>
+            <label>Max events per log<input name="max_events_per_log" type="number" min="1" max="5000" value="500" required /></label>
+            <button class="primary-button" type="submit"><span>Collect and investigate</span><span>→</span></button>
+          </form>
+          <div id="collect-message" class="form-message" role="status"></div>
+        </section>
 
         <section class="panel workflow-panel">
           <div class="panel-heading">

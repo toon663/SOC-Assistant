@@ -102,7 +102,11 @@ textarea { resize: vertical; }
 .form-message { min-height: 18px; color: var(--muted); font-size: 11px; margin-top: 10px; }
 .form-message.success { color: var(--green); }.form-message.error { color: var(--red); }
 .agent-badge { color: var(--blue); border-color: rgba(77,179,255,.3); }
-.workflow-panel { margin-top: 18px; }
+.workflow-panel, .collect-panel { margin-top: 18px; }
+.collect-form { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 12px; align-items: end; }
+.collect-form label { margin-bottom: 0; }
+.form-message.warning { color: var(--gold, #e6b450); }
+@media (max-width: 700px) { .collect-form { grid-template-columns: 1fr; } }
 .workflow-note { color: var(--muted); font-size: 11px; }
 .workflow { display: flex; align-items: center; gap: 9px; }
 .workflow-step { min-width: 125px; flex: 1; padding: 13px; border: 1px solid rgba(77,179,255,.25); border-radius: 10px; background: rgba(77,179,255,.06); }

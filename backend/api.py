@@ -13,12 +13,23 @@ from agents import SecurityEvent, SecurityOperationsPipeline, Severity, incident
 from config import settings
 from database import IncidentRepository
 from integrations import IntegrationHub
+from windows_ingest import DEFAULT_THRESHOLD, IngestUnavailable, WindowsIngestService
 
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, HTTPException, Query
+    from pydantic import BaseModel, Field
 except ImportError:  # pragma: no cover - exercised only without optional dependencies
     FastAPI = None
     HTTPException = RuntimeError
+    BaseModel = object
+    Query = Field = lambda *args, **kwargs: None
+
+
+class WindowsCollectionRequest(BaseModel):
+    logs: list[str] = Field(default=["Security", "System", "Application"], min_length=1, max_length=10)
+    hours: int = Field(default=24, ge=1, le=720)
+    max_events_per_log: int = Field(default=500, ge=1, le=5000)
+    threshold: float = Field(default=DEFAULT_THRESHOLD, gt=0, le=1)
 
 
 def create_app():
@@ -40,6 +51,33 @@ def create_app():
     systems = IntegrationHub()
     repository = IncidentRepository(settings.database_path)
     pipeline = SecurityOperationsPipeline(systems=systems, require_approval=settings.require_human_approval)
+    windows_ingest = WindowsIngestService(pipeline, repository)
+
+    @app.post("/ingest/windows")
+    def ingest_windows(request: WindowsCollectionRequest) -> dict[str, Any]:
+        """Collect from this host's Event Viewer, detect anomalies, and open incidents."""
+        try:
+            return windows_ingest.collect_and_ingest(
+                logs=request.logs,
+                hours=request.hours,
+                max_events_per_log=request.max_events_per_log,
+                threshold=request.threshold,
+            )
+        except IngestUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post("/ingest/document")
+    def ingest_document(
+        document: dict[str, Any],
+        threshold: float = Query(default=DEFAULT_THRESHOLD, gt=0, le=1),
+    ) -> dict[str, Any]:
+        """Process a saved gatherer JSON export, for example from another machine."""
+        try:
+            return windows_ingest.ingest_document(document, threshold=threshold)
+        except IngestUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/health")
     def health() -> dict[str, str]:

@@ -17,7 +17,7 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 from xml.dom import minidom
 
 
@@ -294,20 +294,28 @@ def default_output_path(output_format: str) -> Path:
 	return EVENTS_DIR / f"events_{stamp}.{output_format}"
 
 
-def build_document(args: argparse.Namespace) -> dict[str, Any]:
+def collect_document(
+	logs: Sequence[str] = DEFAULT_LOGS,
+	*,
+	hours: int = 24,
+	max_events_per_log: int = 500,
+	include_raw_xml: bool = False,
+	output_format: str = "json",
+) -> dict[str, Any]:
+	"""Collect events and return the gatherer document; used by the CLI and the backend."""
 	collected_at = datetime.now(timezone.utc)
-	cutoff = collected_at - timedelta(hours=args.hours)
+	cutoff = collected_at - timedelta(hours=hours)
 	all_events: list[dict[str, Any]] = []
 	errors: list[dict[str, str]] = []
 
-	for log_name in args.logs:
+	for log_name in logs:
 		try:
 			all_events.extend(
 				collect_log(
 					log_name,
 					cutoff,
-					args.max_events_per_log,
-					include_raw_xml=args.include_raw_xml,
+					max_events_per_log,
+					include_raw_xml=include_raw_xml,
 				)
 			)
 		except (OSError, RuntimeError) as error:
@@ -319,10 +327,10 @@ def build_document(args: argparse.Namespace) -> dict[str, Any]:
 		"schemaVersion": 1,
 		"collectedAtUtc": collected_at.isoformat(),
 		"computerName": platform.node(),
-		"lookbackHours": args.hours,
-		"maxEventsPerLog": args.max_events_per_log,
-		"logs": list(args.logs),
-		"format": args.format,
+		"lookbackHours": hours,
+		"maxEventsPerLog": max_events_per_log,
+		"logs": list(logs),
+		"format": output_format,
 		"eventCount": len(all_events),
 		"events": all_events,
 		"errors": errors,
@@ -341,7 +349,13 @@ def main() -> int:
 		print("This collector can only run on Windows.", file=sys.stderr)
 		return 2
 
-	document = build_document(args)
+	document = collect_document(
+		args.logs,
+		hours=args.hours,
+		max_events_per_log=args.max_events_per_log,
+		include_raw_xml=args.include_raw_xml,
+		output_format=args.format,
+	)
 	output = render_document(document, args.format)
 
 	try:

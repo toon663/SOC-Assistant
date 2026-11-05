@@ -108,6 +108,41 @@ async function submitEvent(event) {
   }
 }
 
+async function collectEvents(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = $('#collect-message');
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  message.className = 'form-message';
+  message.textContent = 'Collecting events and training the detector…';
+  try {
+    const data = new FormData(form);
+    const response = await fetch('/ingest/windows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hours: Number(data.get('hours')), max_events_per_log: Number(data.get('max_events_per_log')) }) });
+    const raw = await response.text();
+    let result;
+    try { result = raw ? JSON.parse(raw) : {}; } catch { result = {}; }
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Server error (${response.status}). Check the API console.`);
+    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length} new incidents, ${result.duplicates_skipped} already seen.`;
+    const skipped = result.errors.map((item) => `${item.logName}: ${item.message}`).join(' ');
+    message.className = `form-message ${skipped ? 'warning' : 'success'}`;
+    message.textContent = skipped ? `${summary} Not collected, ${skipped}` : summary;
+    await loadIncidents();
+  } catch (error) {
+    message.className = 'form-message error';
+    message.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+function detectionDetails(incident) {
+  const techniques = incident.alert?.mitre_techniques || [];
+  const reasons = incident.alert?.detection_reasons || [];
+  if (!techniques.length && !reasons.length) return '';
+  return `<div class="detail-section"><span class="detail-label">MITRE ATT&amp;CK</span><p>${escapeHtml(techniques.join(', ') || 'No mapped techniques')}</p></div><div class="detail-section"><span class="detail-label">Detection reasons</span><p>${escapeHtml(reasons.join('; ') || 'Model score only')}</p></div>`;
+}
+
 function openDrawer(incidentId) {
   const incident = state.incidents.find((item) => item.incident_id === incidentId);
   if (!incident) return;
@@ -115,7 +150,7 @@ function openDrawer(incidentId) {
   const status = incident.action_result?.status || 'open';
   const score = Math.round(riskScore(incident));
   $('#drawer-title').textContent = incident.alert?.title || event.event_type || 'Security incident';
-  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div><div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
+  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
   $('#incident-drawer').classList.add('open');
   $('#incident-drawer').setAttribute('aria-hidden', 'false');
 }
@@ -126,6 +161,7 @@ function closeDrawer() {
 }
 
 $('#event-form').addEventListener('submit', submitEvent);
+$('#collect-form').addEventListener('submit', collectEvents);
 $('#refresh-button').addEventListener('click', async () => { await checkHealth(); await loadIncidents(); });
 $('#refresh-incidents').addEventListener('click', loadIncidents);
 $('#incident-search').addEventListener('input', renderIncidents);

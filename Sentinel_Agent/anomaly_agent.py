@@ -26,36 +26,13 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
-from threat_intel import ThreatIntelCatalog, get_catalog
+from threat_intel import SEED_SUSPICIOUS_EVENT_IDS, ThreatIntelCatalog, get_catalog
 
 
 AGENT_DIR = Path(__file__).resolve().parent
 DEFAULT_EVENTS_DIR = AGENT_DIR.parent / "Event_Gatherer" / "events"
 DEFAULT_OUTPUT_DIR = AGENT_DIR / "anomalies"
 DEFAULT_MODEL_PATH = AGENT_DIR / "models" / "random_forest_anomaly.joblib"
-
-# Fallback seed list used when threat-intel cache is unavailable.
-SEED_SUSPICIOUS_EVENT_IDS: set[int] = {
-	1102,
-	4616,
-	4625,
-	4648,
-	4672,
-	4688,
-	4697,
-	4698,
-	4720,
-	4722,
-	4728,
-	4732,
-	4756,
-	4768,
-	4769,
-	4771,
-	4776,
-	7045,
-	104,
-}
 
 SUSPICIOUS_MESSAGE_PATTERNS = (
 	re.compile(r"failed\s+logon", re.I),
@@ -511,6 +488,64 @@ def write_anomaly_document(
 	return output_path
 
 
+def intel_metadata(catalog: ThreatIntelCatalog) -> dict[str, Any]:
+	return {
+		"fetchedAtUtc": catalog.fetchedAtUtc,
+		"sources": catalog.sources,
+		"stats": catalog.stats,
+	}
+
+
+def detect_anomalies(
+	events: list[dict[str, Any]],
+	*,
+	source_path: Path,
+	computer_name: str | None,
+	catalog: ThreatIntelCatalog | None,
+	threshold: float = 0.55,
+	n_estimators: int = 200,
+	model_path: Path | None = None,
+	load_existing_model: bool = False,
+) -> list[dict[str, Any]]:
+	"""Score gatherer events; used by the CLI and the backend.
+
+	Trains on this batch plus intel rows unless load_existing_model is set. A
+	freshly trained model is saved only when model_path is provided.
+	"""
+	frame = events_to_frame(events, catalog=catalog)
+
+	if load_existing_model:
+		if model_path is None:
+			raise ValueError("model_path is required with load_existing_model")
+		model, encoders = load_model(model_path)
+		features, _ = build_feature_matrix(frame, encoders)
+	else:
+		train_frame = frame
+		if catalog is not None:
+			synthetic = synthesize_intel_training_rows(catalog)
+			train_frame = pd.concat([frame, synthetic], ignore_index=True)
+			print(
+				f"Training with {len(frame)} live events + {len(synthetic)} MITRE/CISA synthetic rows.",
+				flush=True,
+			)
+		features_train, encoders = build_feature_matrix(train_frame)
+		labels = train_frame["weakLabel"].to_numpy()
+		model = train_random_forest(features_train, labels, n_estimators=n_estimators)
+		features, _ = build_feature_matrix(frame, encoders)
+		if model_path is not None:
+			save_model(model_path, model, encoders)
+
+	_predictions, scores = score_events(model, features)
+	return build_anomaly_events(
+		frame,
+		scores,
+		threshold=threshold,
+		source_path=source_path,
+		computer_name=computer_name,
+		intel_meta=intel_metadata(catalog) if catalog is not None else None,
+	)
+
+
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(
 		description="Detect cybersecurity anomalies using a Random Forest trained with MITRE/CISA intel.",
@@ -590,11 +625,7 @@ def main() -> int:
 	intel_meta: dict[str, Any] | None = None
 	if not args.no_intel:
 		catalog = get_catalog(refresh=args.refresh_intel or args.refresh_intel_only, include_car=not args.skip_car)
-		intel_meta = {
-			"fetchedAtUtc": catalog.fetchedAtUtc,
-			"sources": catalog.sources,
-			"stats": catalog.stats,
-		}
+		intel_meta = intel_metadata(catalog)
 		if args.refresh_intel_only:
 			return 0
 
@@ -605,38 +636,19 @@ def main() -> int:
 		print(f"No events found in {source_path}", flush=True)
 		return 1
 
-	frame = events_to_frame(events, catalog=catalog)
+	if args.load_model and not args.model_path.exists():
+		print(f"Model not found: {args.model_path}", flush=True)
+		return 1
 
-	if args.load_model:
-		if not args.model_path.exists():
-			print(f"Model not found: {args.model_path}", flush=True)
-			return 1
-		model, encoders = load_model(args.model_path)
-		features, _ = build_feature_matrix(frame, encoders)
-	else:
-		train_frame = frame
-		if catalog is not None:
-			synthetic = synthesize_intel_training_rows(catalog)
-			train_frame = pd.concat([frame, synthetic], ignore_index=True)
-			print(
-				f"Training with {len(frame)} live events + {len(synthetic)} MITRE/CISA synthetic rows.",
-				flush=True,
-			)
-		features_train, encoders = build_feature_matrix(train_frame)
-		labels = train_frame["weakLabel"].to_numpy()
-		model = train_random_forest(features_train, labels, n_estimators=args.n_estimators)
-		features, _ = build_feature_matrix(frame, encoders)
-		if not args.no_save_model:
-			save_model(args.model_path, model, encoders)
-
-	_predictions, scores = score_events(model, features)
-	anomalies = build_anomaly_events(
-		frame,
-		scores,
-		threshold=args.threshold,
+	anomalies = detect_anomalies(
+		events,
 		source_path=source_path,
 		computer_name=document.get("computerName"),
-		intel_meta=intel_meta,
+		catalog=catalog,
+		threshold=args.threshold,
+		n_estimators=args.n_estimators,
+		model_path=None if args.no_save_model and not args.load_model else args.model_path,
+		load_existing_model=args.load_model,
 	)
 	output_path = write_anomaly_document(
 		args.output_dir,

@@ -35,6 +35,29 @@ EVENT_CODE_RE = re.compile(r"EventCode\s*=\s*(\d+)", re.I)
 EVENT_ID_RE = re.compile(r"(?:EventID|event_id|Event ID)\s*=?\s*(\d+)", re.I)
 TECHNIQUE_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
 
+# Fallback seed list used when threat-intel cache is unavailable.
+SEED_SUSPICIOUS_EVENT_IDS: set[int] = {
+	1102,
+	4616,
+	4625,
+	4648,
+	4672,
+	4688,
+	4697,
+	4698,
+	4720,
+	4722,
+	4728,
+	4732,
+	4756,
+	4768,
+	4769,
+	4771,
+	4776,
+	7045,
+	104,
+}
+
 # Native Event Viewer channels collected by Event_Gatherer.
 NATIVE_LOGS = {"Security", "System", "Application"}
 
