@@ -73,6 +73,19 @@
           </div>
         </section>
 
+        <section class="panel page-section" aria-labelledby="scan-heading">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">WINDOWS EVENT VIEWER</p>
+              <h2 id="scan-heading">Windows Logs &gt; Security</h2>
+              <p>Read the newest 200 Security events on the Windows computer running this API.</p>
+            </div>
+            <button class="primary-button" id="scan-button" type="button">Read Security events</button>
+          </div>
+          <div id="scan-message" class="form-message" role="status">Read Security events on demand and check Sentinel rules.</div>
+          <div id="scan-results" class="drawer-content"></div>
+        </section>
+
         <div class="content-grid">
           <section id="incidents" class="panel incidents-panel">
             <div class="panel-heading">
@@ -94,6 +107,7 @@
               <option value="">All statuses</option>
               <option value="approval_required">Pending approval</option>
               <option value="executed">Executed</option>
+              <option value="denied">Denied by reviewer</option>
               <option value="blocked_by_policy">Blocked</option>
               </select>
               <button class="text-button" id="refresh-incidents">Refresh ↻</button>

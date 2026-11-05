@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
-from agents import Incident, incident_to_dict
+from agents import Incident, incident_from_dict, incident_to_dict
 
 
 class IncidentRepository:
@@ -41,19 +41,44 @@ class IncidentRepository:
             )
             self.connection.commit()
 
-    def save_incident(self, incident: Incident) -> None:
+    def save_incident(self, incident: Incident) -> dict[str, Any]:
+        """Persist a new incident; repeated ingestion preserves existing decisions."""
+        with self._lock, self.connection:
+            self.connection.execute("BEGIN IMMEDIATE")
+            existing = self.get_incident(incident.incident_id)
+            if existing is not None:
+                return existing
+            self._write_incident(incident)
+            return incident_to_dict(incident)
+
+    def update_pending_incident(
+        self, incident_id: str, update: Callable[[Incident], None]
+    ) -> dict[str, Any]:
+        """Serialize decisions across connections and reject repeated decisions."""
+        with self._lock, self.connection:
+            self.connection.execute("BEGIN IMMEDIATE")
+            payload = self.get_incident(incident_id)
+            if payload is None:
+                raise LookupError("incident not found")
+            if payload.get("action_result", {}).get("status") != "approval_required":
+                raise ValueError("This incident is no longer awaiting approval")
+            incident = incident_from_dict(payload)
+            update(incident)
+            self._write_incident(incident)
+            return incident_to_dict(incident)
+
+    def _write_incident(self, incident: Incident) -> None:
+        """Write incident and audit rows inside the caller's transaction."""
         payload = incident_to_dict(incident)
-        with self._lock:
-            self.connection.execute(
-                "INSERT OR REPLACE INTO incidents VALUES (?, ?, ?, ?, ?)",
-                (incident.incident_id, incident.detected_at, incident.action_result.get("status", "open"), incident.forecast.get("forecast_score", 0), json.dumps(payload)),
-            )
-            self.connection.execute("DELETE FROM audit_log WHERE incident_id = ?", (incident.incident_id,))
-            self.connection.executemany(
-                "INSERT INTO audit_log (incident_id, timestamp, agent, action, payload) VALUES (?, ?, ?, ?, ?)",
-                [(incident.incident_id, item.get("timestamp", ""), item.get("agent", ""), item.get("action", ""), json.dumps(item)) for item in incident.audit_log],
-            )
-            self.connection.commit()
+        self.connection.execute(
+            "INSERT OR REPLACE INTO incidents VALUES (?, ?, ?, ?, ?)",
+            (incident.incident_id, incident.detected_at, incident.action_result.get("status", "open"), incident.forecast.get("forecast_score", 0), json.dumps(payload)),
+        )
+        self.connection.execute("DELETE FROM audit_log WHERE incident_id = ?", (incident.incident_id,))
+        self.connection.executemany(
+            "INSERT INTO audit_log (incident_id, timestamp, agent, action, payload) VALUES (?, ?, ?, ?, ?)",
+            [(incident.incident_id, item.get("timestamp", ""), item.get("agent", ""), item.get("action", ""), json.dumps(item)) for item in incident.audit_log],
+        )
 
     def get_incident(self, incident_id: str) -> Optional[dict[str, Any]]:
         with self._lock:

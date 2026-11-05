@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 from fastapi.staticfiles import StaticFiles
 
 
@@ -9,10 +10,11 @@ from fastapi.staticfiles import StaticFiles
 from dataclasses import asdict
 from typing import Any
 
-from agents import SecurityEvent, SecurityOperationsPipeline, Severity, incident_to_dict, utc_now
+from agents import SecurityEvent, SecurityOperationsPipeline, Severity, utc_now
 from config import settings
 from database import IncidentRepository
 from integrations import IntegrationHub
+from gatherer import gather_security_events
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -45,6 +47,27 @@ def create_app():
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
 
+    @app.post("/scan")
+    def scan_computer() -> dict[str, Any]:
+        """Scan the backend host on demand; persist an incident only for findings."""
+        try:
+            batch = gather_security_events()
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except (RuntimeError, OSError) as exc:
+            logging.getLogger(__name__).exception("Computer scan failed")
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        events = pipeline.sentinel.inspect_computer(batch)
+        incident = None
+        if events:
+            incident = pipeline.run(events, approved=False)
+            incident = repository.save_incident(incident)
+        return {
+            "snapshot": asdict(batch),
+            "anomalies": [event.metadata for event in events],
+            "incident": incident,
+        }
+
 
 
     @app.post("/events")
@@ -70,8 +93,7 @@ def create_app():
                 for item in raw_events
             ]
             incident = pipeline.run(events, approved=False)
-            repository.save_incident(incident)
-            return incident_to_dict(incident)
+            return repository.save_incident(incident)
         except (KeyError, ValueError, TypeError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -85,6 +107,27 @@ def create_app():
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
         return incident
+
+    @app.post("/incidents/{incident_id}/decision")
+    def decide_incident(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        decision = payload.get("decision")
+        reviewer = payload.get("reviewer")
+        reason = payload.get("reason")
+        if not isinstance(decision, str) or decision not in {"approve", "deny"}:
+            raise HTTPException(status_code=422, detail="decision must be approve or deny")
+        if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 200:
+            raise HTTPException(status_code=422, detail="reviewer must contain 1 to 200 characters")
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 2000:
+            raise HTTPException(status_code=422, detail="reason must contain 1 to 2000 characters")
+        try:
+            return repository.update_pending_incident(
+                incident_id,
+                lambda incident: pipeline.orchestrator.review_response(incident, decision, reviewer, reason),
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 
