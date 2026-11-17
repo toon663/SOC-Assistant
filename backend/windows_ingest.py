@@ -24,6 +24,9 @@ from database import IncidentRepository
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_THRESHOLD = 0.55
+# Newest events kept as evidence per incident; the dashboard loads every stored
+# event, so noisy sources must not grow without bound. Counts stay exact.
+MAX_STORED_EVENTS = 50
 
 # Appended, not prepended, so backend modules such as models.py keep priority.
 for _folder in ("Event_Gatherer", "Sentinel_Agent"):
@@ -57,6 +60,8 @@ WINDOWS_EVENT_TYPES = {
 }
 
 LOG_CLEARED_EVENT_IDS = {104, 1102}
+# Logon and privilege events that Windows emits constantly for service identities.
+ROUTINE_FOR_SERVICE_ACCOUNTS = {4624, 4672}
 
 # Service identities are never valid targets for a disable-user playbook.
 NON_HUMAN_ACCOUNTS = {
@@ -112,6 +117,8 @@ def severity_for(anomaly: dict[str, Any]) -> Severity:
 
     if level == 1 or has_cve or event_id in LOG_CLEARED_EVENT_IDS:
         return Severity.CRITICAL
+    if event_id in ROUTINE_FOR_SERVICE_ACCOUNTS and extract_user(event) is None:
+        return Severity.LOW
     # Uses the curated seed IDs, not the catalog-derived list: low catalog IDs such
     # as 1 are Sysmon codes that collide with unrelated System/Application events.
     if event_id in SEED_SUSPICIOUS_EVENT_IDS or (has_mitre and event.get("logName") == "Security"):
@@ -155,17 +162,27 @@ def anomaly_to_event(anomaly: dict[str, Any]) -> SecurityEvent:
     )
 
 
-def group_events(events: Iterable[SecurityEvent]) -> list[list[SecurityEvent]]:
-    """Group repeats into one incident per host, event, and user.
+def group_key(event: SecurityEvent) -> str:
+    """Identify repeats of one event per host, channel, event ID, and user.
 
     User stays in the key because the Orchestrator acts on the first event's user,
     so one incident must not mix accounts.
     """
-    groups: dict[tuple[Any, ...], list[SecurityEvent]] = {}
+    return "|".join(
+        str(part)
+        for part in (event.host, event.metadata.get("log_name"), event.metadata.get("windows_event_id"), event.user)
+    )
+
+
+def group_events(events: Iterable[SecurityEvent]) -> list[list[SecurityEvent]]:
+    groups: dict[str, list[SecurityEvent]] = {}
     for event in events:
-        key = (event.host, event.metadata.get("log_name"), event.metadata.get("windows_event_id"), event.user)
-        groups.setdefault(key, []).append(event)
+        groups.setdefault(group_key(event), []).append(event)
     return list(groups.values())
+
+
+def _restore_event(stored: dict[str, Any]) -> SecurityEvent:
+    return SecurityEvent(**{**stored, "severity": Severity(stored["severity"])})
 
 
 def _load_detector() -> Any:
@@ -251,17 +268,40 @@ class WindowsIngestService:
             summary["duplicates_skipped"] = len(events) - len(new_events)
 
             for group in group_events(new_events):
-                incident = self.pipeline.run(group, approved=False)
-                self.repository.save_incident(incident, mark_events_ingested=True)
-                summary["incidents"].append(
-                    {
-                        "incident_id": incident.incident_id,
-                        "title": incident.alert.get("title"),
-                        "severity": group[0].severity.value,
-                        "event_count": len(group),
-                        "risk_score": incident.forecast.get("forecast_score"),
-                        "playbook": incident.selected_playbook,
-                        "status": incident.action_result.get("status"),
-                    }
-                )
+                summary["incidents"].append(self._record_group(group))
         return summary
+
+    def _record_group(self, group: list[SecurityEvent]) -> dict[str, Any]:
+        """Open an incident for a group, or add its events to the group's open incident."""
+        key = group_key(group[0])
+        prior = self.repository.find_open_incident(key)
+        prior_events = [_restore_event(item) for item in prior["events"]] if prior else []
+        prior_alert = prior["alert"] if prior else {}
+
+        # Newest first: the agents treat the first event as the primary one.
+        evidence = sorted(prior_events + group, key=lambda event: event.timestamp, reverse=True)
+        incident = self.pipeline.run(evidence[:MAX_STORED_EVENTS], approved=False, continues=prior)
+
+        timestamps = [event.timestamp for event in group]
+        occurrences = len(group) + prior_alert.get("occurrence_count", len(prior_events))
+        incident.alert.update(
+            occurrence_count=occurrences,
+            first_seen=min(timestamps + [prior_alert.get("first_seen", min(timestamps))]),
+            last_seen=max(timestamps + [prior_alert.get("last_seen", max(timestamps))]),
+        )
+        self.repository.save_incident(
+            incident,
+            ingested_event_ids=[event.event_id for event in group],
+            group_key=key,
+        )
+        return {
+            "incident_id": incident.incident_id,
+            "title": incident.alert.get("title"),
+            "severity": incident.events[0].severity.value,
+            "new_events": len(group),
+            "occurrence_count": occurrences,
+            "merged": prior is not None,
+            "risk_score": incident.forecast.get("forecast_score"),
+            "playbook": incident.selected_playbook,
+            "status": incident.action_result.get("status"),
+        }

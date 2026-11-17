@@ -18,6 +18,10 @@ function riskScore(incident) {
   return Number(incident.forecast?.forecast_score ?? incident.risk_analysis?.risk_score ?? 0);
 }
 
+function occurrenceCount(incident) {
+  return Number(incident.alert?.occurrence_count ?? incident.events?.length ?? 1);
+}
+
 function renderMetrics() {
   const incidents = state.incidents;
   $('#incident-count').textContent = incidents.length;
@@ -47,7 +51,10 @@ function renderIncidents() {
     const event = incident.events?.[0] || {};
     const score = Math.round(riskScore(incident));
     const severity = event.severity || 'unknown';
-    return `<article class="incident-row" tabindex="0" role="button" data-incident-id="${escapeHtml(incident.incident_id)}"><div><div class="incident-title">${escapeHtml(title)}</div><div class="incident-meta">${escapeHtml(event.host || 'Unknown host')} · ${formatDate(incident.detected_at)} · ${escapeHtml(incident.incident_id.slice(0, 10))}</div></div><div class="incident-right"><span class="severity-badge ${escapeHtml(severity)}">${escapeHtml(severity)}</span><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong class="risk-score">${score}<small>/100</small></strong><div class="risk-bar"><span style="width: ${Math.min(score, 100)}%"></span></div></div></article>`;
+    const count = occurrenceCount(incident);
+    const countBadge = count > 1 ? `<span class="count-badge" title="${count} occurrences">×${count}</span>` : '';
+    const lastSeen = count > 1 ? ` · last seen ${escapeHtml(formatDate(incident.alert?.last_seen))}` : '';
+    return `<article class="incident-row" tabindex="0" role="button" data-incident-id="${escapeHtml(incident.incident_id)}"><div><div class="incident-title">${escapeHtml(title)}${countBadge}</div><div class="incident-meta">${escapeHtml(event.host || 'Unknown host')} · ${formatDate(incident.detected_at)}${lastSeen} · ${escapeHtml(incident.incident_id.slice(0, 10))}</div></div><div class="incident-right"><span class="severity-badge ${escapeHtml(severity)}">${escapeHtml(severity)}</span><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong class="risk-score">${score}<small>/100</small></strong><div class="risk-bar"><span style="width: ${Math.min(score, 100)}%"></span></div></div></article>`;
   }).join('');
   list.querySelectorAll('[data-incident-id]').forEach((row) => {
     row.addEventListener('click', () => openDrawer(row.dataset.incidentId));
@@ -123,7 +130,8 @@ async function collectEvents(event) {
     let result;
     try { result = raw ? JSON.parse(raw) : {}; } catch { result = {}; }
     if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Server error (${response.status}). Check the API console.`);
-    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length} new incidents, ${result.duplicates_skipped} already seen.`;
+    const merged = result.incidents.filter((item) => item.merged).length;
+    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen.`;
     const skipped = result.errors.map((item) => `${item.logName}: ${item.message}`).join(' ');
     message.className = `form-message ${skipped ? 'warning' : 'success'}`;
     message.textContent = skipped ? `${summary} Not collected, ${skipped}` : summary;
@@ -150,7 +158,7 @@ function openDrawer(incidentId) {
   const status = incident.action_result?.status || 'open';
   const score = Math.round(riskScore(incident));
   $('#drawer-title').textContent = incident.alert?.title || event.event_type || 'Security incident';
-  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
+  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
   $('#incident-drawer').classList.add('open');
   $('#incident-drawer').setAttribute('aria-hidden', 'false');
 }

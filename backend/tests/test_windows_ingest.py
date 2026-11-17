@@ -7,6 +7,7 @@ from unittest import mock
 from agents import SecurityEvent, SecurityOperationsPipeline, SentinelAgent, Severity, utc_now
 from database import IncidentRepository
 from windows_ingest import (
+    MAX_STORED_EVENTS,
     WindowsIngestService,
     anomaly_to_event,
     extract_source_ip,
@@ -91,6 +92,11 @@ class MappingTests(unittest.TestCase):
             (anomaly(999, level=1), Severity.CRITICAL),
             (anomaly(999, cisa=[{"type": "cve", "value": "CVE-2024-1"}]), Severity.CRITICAL),
             (anomaly(4625), Severity.HIGH),
+            (anomaly(4672), Severity.HIGH),
+            (anomaly(4672, user="SYSTEM"), Severity.LOW),
+            (anomaly(4624, mitre=["T1078"], user="SYSTEM"), Severity.LOW),
+            # Other high-risk events stay high even for service accounts.
+            (anomaly(4625, user="SYSTEM"), Severity.HIGH),
             (anomaly(999, mitre=["T1078"]), Severity.HIGH),
             (anomaly(7036, log="System", mitre=["T1489"]), Severity.MEDIUM),
             (anomaly(10010, log="System", level=2), Severity.MEDIUM),
@@ -174,7 +180,7 @@ class IngestEndToEndTests(unittest.TestCase):
         self.assertEqual(summary["errors"], self.document["errors"])
         by_type = {item["title"]: item for item in summary["incidents"]}
         failed_logons = by_type["Potential failed_logon incident"]
-        self.assertEqual(failed_logons["event_count"], 2)
+        self.assertEqual(failed_logons["occurrence_count"], 2)
         self.assertEqual(failed_logons["severity"], "high")
         self.assertEqual(by_type["Potential audit_log_cleared incident"]["severity"], "critical")
 
@@ -195,11 +201,49 @@ class IngestEndToEndTests(unittest.TestCase):
         self.assertEqual(second["duplicates_skipped"], first["anomalies_detected"])
         self.assertEqual(len(self.repository.list_incidents()), len(first["incidents"]))
 
-    def test_only_new_events_open_a_new_incident(self):
-        self.service.ingest_document(self.document)
+    def test_repeat_in_later_scan_updates_the_open_incident(self):
+        first = self.service.ingest_document(self.document)
+        original = next(i for i in first["incidents"] if i["title"] == "Potential failed_logon incident")
+        before = self.repository.get_incident(original["incident_id"])
+
         self.document["events"].append(windows_event(5))
         summary = self.service.ingest_document(self.document)
-        self.assertEqual([item["event_count"] for item in summary["incidents"]], [1])
+
+        self.assertEqual(len(summary["incidents"]), 1)
+        merged = summary["incidents"][0]
+        self.assertTrue(merged["merged"])
+        self.assertEqual(merged["incident_id"], original["incident_id"])
+        self.assertEqual((merged["new_events"], merged["occurrence_count"]), (1, 3))
+
+        stored = self.repository.get_incident(original["incident_id"])
+        self.assertEqual(stored["alert"]["occurrence_count"], 3)
+        self.assertEqual(stored["alert"]["ticket_id"], before["alert"]["ticket_id"])
+        self.assertEqual(stored["detected_at"], before["detected_at"])
+        self.assertEqual(stored["audit_log"][: len(before["audit_log"])], before["audit_log"])
+        self.assertLess(stored["alert"]["first_seen"], stored["alert"]["last_seen"])
+        self.assertEqual(len(self.repository.list_incidents()), len(first["incidents"]))
+
+    def test_repeat_after_response_opens_a_new_incident(self):
+        first = self.service.ingest_document(self.document)
+        self.repository.connection.execute("UPDATE incidents SET status = 'executed'")
+        self.repository.connection.commit()
+
+        self.document["events"].append(windows_event(5))
+        summary = self.service.ingest_document(self.document)
+
+        self.assertFalse(summary["incidents"][0]["merged"])
+        self.assertNotIn(summary["incidents"][0]["incident_id"], [i["incident_id"] for i in first["incidents"]])
+
+    def test_count_stays_exact_when_stored_evidence_is_capped(self):
+        document = {"computerName": "HOST", "events": [windows_event(i) for i in range(1, 121)]}
+        incident_id = self.service.ingest_document(document)["incidents"][0]["incident_id"]
+        stored = self.repository.get_incident(incident_id)
+        self.assertEqual(stored["alert"]["occurrence_count"], 120)
+        self.assertEqual(len(stored["events"]), MAX_STORED_EVENTS)
+
+        # Events dropped from storage must still count as processed.
+        repeat = self.service.ingest_document(document)
+        self.assertEqual((repeat["incidents"], repeat["duplicates_skipped"]), ([], 120))
 
     def test_empty_document_is_a_no_op(self):
         summary = self.service.ingest_document({"events": []})

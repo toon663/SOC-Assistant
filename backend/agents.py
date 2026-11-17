@@ -174,6 +174,9 @@ class SentinelAgent:
             "normalized_event_count": len(event_list),
             "severity": self._severity_from_score(anomaly_score).value,
             "fingerprint": fingerprint,
+            "occurrence_count": len(event_list),
+            "first_seen": min(e.timestamp for e in event_list),
+            "last_seen": max(e.timestamp for e in event_list),
         }
         if any(e.detector_score is not None for e in event_list):
             incident.alert.update(self._detection_details(event_list))
@@ -205,7 +208,7 @@ class SentinelAgent:
         primary = events[0]
         return {
             "summary": (
-                f"Detector flagged {len(events)} event(s) from "
+                f"Detector flagged events from "
                 f"{primary.destination or primary.source} on "
                 f"{primary.host or 'unknown host'}: {'; '.join(reasons) or 'model score'}."
             ),
@@ -327,7 +330,7 @@ class OrchestratorAgent:
         self.require_approval = require_approval
 
     def create_risk_report(self, incident: Incident) -> Incident:
-        ticket_id = self.systems.create_ticket(incident)
+        ticket_id = incident.alert.get("ticket_id") or self.systems.create_ticket(incident)
         incident.response_options = self._response_options(incident)
         incident.alert["ticket_id"] = ticket_id
         incident.record(self.name, "send_risk_report", ticket_id=ticket_id)
@@ -397,9 +400,19 @@ class SecurityOperationsPipeline:
         self.orchestrator = OrchestratorAgent(systems, require_approval=require_approval)
 
     def run(
-        self, events: Iterable[SecurityEvent], approved: bool = False
+        self,
+        events: Iterable[SecurityEvent],
+        approved: bool = False,
+        continues: Optional[Dict[str, Any]] = None,
     ) -> Incident:
+        """Run the workflow; ``continues`` is a stored incident to re-assess in place."""
         incident = self.sentinel.detect_anomaly(events)
+        if continues:
+            incident.incident_id = continues["incident_id"]
+            incident.detected_at = continues["detected_at"]
+            incident.alert["fingerprint"] = continues["incident_id"]
+            incident.alert["ticket_id"] = continues.get("alert", {}).get("ticket_id")
+            incident.audit_log = continues.get("audit_log", []) + incident.audit_log
         self.analyst.analyze(incident)
         self.prognostic.forecast_risk(incident)
         self.bi.assess(incident)

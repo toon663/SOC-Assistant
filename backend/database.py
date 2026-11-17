@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from agents import Incident, incident_to_dict
 
@@ -41,6 +41,10 @@ class IncidentRepository:
                 event_id TEXT PRIMARY KEY,
                 incident_id TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS incident_groups (
+                group_key TEXT PRIMARY KEY,
+                incident_id TEXT NOT NULL
+            );
                 """
             )
             self.connection.commit()
@@ -50,8 +54,25 @@ class IncidentRepository:
             row = self.connection.execute("SELECT 1 FROM ingested_events WHERE event_id = ?", (event_id,)).fetchone()
         return row is not None
 
-    def save_incident(self, incident: Incident, *, mark_events_ingested: bool = False) -> None:
-        """Persist an incident; optionally record its events so overlapping collections skip them."""
+    def find_open_incident(self, group_key: str) -> Optional[dict[str, Any]]:
+        """Return the unresolved incident for a group; acted-on incidents are not reopened."""
+        with self._lock:
+            row = self.connection.execute(
+                """SELECT i.payload FROM incident_groups g
+                   JOIN incidents i ON i.incident_id = g.incident_id
+                   WHERE g.group_key = ? AND i.status IN ('open', 'approval_required')""",
+                (group_key,),
+            ).fetchone()
+        return json.loads(row["payload"]) if row else None
+
+    def save_incident(
+        self,
+        incident: Incident,
+        *,
+        ingested_event_ids: Iterable[str] = (),
+        group_key: Optional[str] = None,
+    ) -> None:
+        """Persist an incident, its processed event IDs, and its repeat-event group."""
         payload = incident_to_dict(incident)
         with self._lock:
             self.connection.execute(
@@ -63,10 +84,14 @@ class IncidentRepository:
                 "INSERT INTO audit_log (incident_id, timestamp, agent, action, payload) VALUES (?, ?, ?, ?, ?)",
                 [(incident.incident_id, item.get("timestamp", ""), item.get("agent", ""), item.get("action", ""), json.dumps(item)) for item in incident.audit_log],
             )
-            if mark_events_ingested:
-                self.connection.executemany(
-                    "INSERT OR IGNORE INTO ingested_events (event_id, incident_id) VALUES (?, ?)",
-                    [(event.event_id, incident.incident_id) for event in incident.events],
+            self.connection.executemany(
+                "INSERT OR IGNORE INTO ingested_events (event_id, incident_id) VALUES (?, ?)",
+                [(event_id, incident.incident_id) for event_id in ingested_event_ids],
+            )
+            if group_key is not None:
+                self.connection.execute(
+                    "INSERT OR REPLACE INTO incident_groups (group_key, incident_id) VALUES (?, ?)",
+                    (group_key, incident.incident_id),
                 )
             self.connection.commit()
 

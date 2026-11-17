@@ -105,7 +105,8 @@ textarea { resize: vertical; }
 .workflow-panel, .collect-panel { margin-top: 18px; }
 .collect-form { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 12px; align-items: end; }
 .collect-form label { margin-bottom: 0; }
-.form-message.warning { color: var(--gold, #e6b450); }
+.form-message.warning { color: var(--gold); }
+.count-badge { display: inline-block; margin-left: 8px; padding: 1px 7px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 11px; font-weight: 700; }
 @media (max-width: 700px) { .collect-form { grid-template-columns: 1fr; } }
 .workflow-note { color: var(--muted); font-size: 11px; }
 .workflow { display: flex; align-items: center; gap: 9px; }
