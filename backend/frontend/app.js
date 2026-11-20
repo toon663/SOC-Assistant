@@ -1,4 +1,8 @@
 const state = { incidents: [] };
+
+function selectedSeverities() {
+  return new Set([...document.querySelectorAll('#severity-filter input:checked')].map((box) => box.value));
+}
 const $ = (selector) => document.querySelector(selector);
 
 function setApiStatus(online, text) {
@@ -25,7 +29,7 @@ function occurrenceCount(incident) {
 function renderMetrics() {
   const incidents = state.incidents;
   $('#incident-count').textContent = incidents.length;
-  $('#high-risk-count').textContent = incidents.filter((item) => riskScore(item) >= 65).length;
+  $('#high-risk-count').textContent = incidents.filter((item) => riskScore(item) >= 65 && item.action_result?.status !== 'resolved').length;
   $('#contained-count').textContent = incidents.filter((item) => ['executed', 'contained', 'resolved'].includes(item.action_result?.status)).length;
   $('#approval-count').textContent = incidents.filter((item) => item.action_result?.status === 'approval_required').length;
 }
@@ -33,13 +37,14 @@ function renderMetrics() {
 function renderIncidents() {
   const list = $('#incident-list');
   const search = $('#incident-search').value.trim().toLowerCase();
-  const severity = $('#severity-filter').value;
+  const severities = selectedSeverities();
   const statusFilter = $('#status-filter').value;
   const incidents = state.incidents.filter((incident) => {
     const status = incident.action_result?.status || 'open';
     const event = incident.events?.[0] || {};
     const searchable = [incident.incident_id, incident.alert?.title, event.event_type, event.host, event.user].join(' ').toLowerCase();
-    return (!search || searchable.includes(search)) && (!severity || event.severity === severity) && (!statusFilter || status === statusFilter);
+    const statusMatch = statusFilter === 'active' ? status !== 'resolved' : (!statusFilter || status === statusFilter);
+    return (!search || searchable.includes(search)) && severities.has(event.severity) && statusMatch;
   });
   if (!incidents.length) {
     list.innerHTML = '<div class="empty-state">No matching incidents found.</div>';
@@ -258,10 +263,30 @@ function openDrawer(incidentId) {
   const event = incident.events?.[0] || {};
   const status = incident.action_result?.status || 'open';
   const score = Math.round(riskScore(incident));
+  const resolved = status === 'resolved';
+  const resolveControl = resolved
+    ? `<p class="resolved-note">Resolved ${escapeHtml(formatDate(incident.action_result?.resolved_at))}</p>`
+    : `<button class="resolve-button" type="button" id="resolve-incident" data-incident-id="${escapeHtml(incident.incident_id)}">Mark as resolved ✓</button><div id="resolve-message" class="form-message" role="status"></div>`;
   $('#drawer-title').textContent = incident.alert?.title || event.event_type || 'Security incident';
-  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
+  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><div class="drawer-actions">${resolveControl}</div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
+  const resolveButton = $('#resolve-incident');
+  if (resolveButton) resolveButton.addEventListener('click', () => resolveIncident(resolveButton.dataset.incidentId, resolveButton));
   $('#incident-drawer').classList.add('open');
   $('#incident-drawer').setAttribute('aria-hidden', 'false');
+}
+
+async function resolveIncident(incidentId, button) {
+  button.disabled = true;
+  try {
+    const response = await fetch(`/incidents/${encodeURIComponent(incidentId)}/resolve`, { method: 'POST' });
+    if (!response.ok) throw new Error(`Could not resolve incident (${response.status}).`);
+    closeDrawer();
+    await loadIncidents();
+  } catch (error) {
+    $('#resolve-message').className = 'form-message error';
+    $('#resolve-message').textContent = error.message;
+    button.disabled = false;
+  }
 }
 
 function closeDrawer() {
@@ -269,13 +294,24 @@ function closeDrawer() {
   $('#incident-drawer').setAttribute('aria-hidden', 'true');
 }
 
-$('#event-form').addEventListener('submit', submitEvent);
+// Manual event submission is disabled for now (see the commented-out panel in index.html).
+// $('#event-form').addEventListener('submit', submitEvent);
 $('#collect-form').addEventListener('submit', collectEvents);
 $('#scan-form').addEventListener('submit', scanFile);
 $('#refresh-button').addEventListener('click', async () => { await checkHealth(); await loadIncidents(); });
 $('#refresh-incidents').addEventListener('click', loadIncidents);
 $('#incident-search').addEventListener('input', renderIncidents);
-$('#severity-filter').addEventListener('change', renderIncidents);
+function updateSeveritySummary() {
+  const boxes = [...document.querySelectorAll('#severity-filter input')];
+  const checked = boxes.filter((box) => box.checked).map((box) => box.parentElement.textContent.trim());
+  $('#severity-summary').textContent = checked.length === boxes.length ? 'All severities' : (checked.join(', ') || 'No severities');
+}
+
+document.querySelectorAll('#severity-filter input').forEach((box) => box.addEventListener('change', () => { updateSeveritySummary(); renderIncidents(); }));
+document.addEventListener('click', (event) => {
+  const dropdown = $('#severity-dropdown');
+  if (dropdown.open && !dropdown.contains(event.target)) dropdown.open = false;
+});
 $('#status-filter').addEventListener('change', renderIncidents);
 $('#close-drawer').addEventListener('click', closeDrawer);
 document.querySelector('[data-close-drawer]').addEventListener('click', closeDrawer);

@@ -134,6 +134,25 @@ class ServiceTests(unittest.TestCase):
             self.service.file_scan.scan_process_events([process_event(1, path)], host="HOST")
         self.assertEqual(self.scanner.calls, 1)
 
+    def test_resolved_incident_leaves_open_queue(self):
+        incident_id = self.service.ingest_scan_result(scan_result(), host="HOST")["incident"]["incident_id"]
+        resolved = self.repository.resolve_incident(incident_id, resolved_at="2026-11-19T12:00:00+00:00")
+        self.assertEqual(resolved["action_result"]["status"], "resolved")
+        self.assertEqual(resolved["action_result"]["previous_status"], "approval_required")
+        self.assertEqual(resolved["audit_log"][-1]["action"], "resolve_incident")
+        self.assertEqual(self.repository.get_incident(incident_id)["action_result"]["status"], "resolved")
+        self.assertIsNone(self.repository.find_open_incident(f"HOST|malware-scan|{'a' * 64}"))
+        self.assertIsNone(self.repository.resolve_incident("missing", resolved_at="x"))
+
+    @unittest.skipUnless(HAS_ML, "detector dependencies are not installed")
+    def test_routine_process_launches_do_not_open_incidents(self):
+        self.scanner.verdict = "clean"
+        path = os.path.join(self.dir, "tool.exe")
+        open(path, "wb").close()
+        summary = self.service.ingest_document({"computerName": "HOST", "events": [process_event(1, path), process_event(2, path)]})
+        self.assertEqual(summary["incidents"], [])
+        self.assertEqual(summary["process_launches_skipped"], 2)
+
     @unittest.skipUnless(HAS_ML, "detector dependencies are not installed")
     def test_process_creation_ingest_opens_malware_incident(self):
         path = os.path.join(self.dir, "dropper.exe")

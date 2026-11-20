@@ -170,6 +170,14 @@ def create_app():
             raise HTTPException(status_code=404, detail="incident not found")
         return incident
 
+    @app.post("/incidents/{incident_id}/resolve")
+    def resolve_incident(incident_id: str) -> dict[str, Any]:
+        """Close an incident from the analyst console; it leaves the active queue."""
+        incident = repository.resolve_incident(incident_id, resolved_at=utc_now())
+        if incident is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        return incident
+
 
 
     frontend_dir = Path(__file__).resolve().parent / "frontend"

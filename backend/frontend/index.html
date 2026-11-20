@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SOC Assistant | Security Operations Dashboard</title>
-    <link rel="stylesheet" href="/app/styles.css?v=3" />
+    <link rel="stylesheet" href="/app/styles.css?v=7" />
   </head>
   <body>
     <div class="shell">
@@ -22,7 +22,9 @@
           <a class="nav-link" href="#incidents"><span>◉</span> Incidents</a>
           <a class="nav-link" href="#collect"><span>⇣</span> Collect events</a>
           <a class="nav-link" href="#scan"><span>⌕</span> Scan a file</a>
+          <!-- Manual event submission is disabled for now.
           <a class="nav-link" href="#submit"><span>＋</span> Submit event</a>
+          -->
           <a class="nav-link" href="/docs" target="_blank" rel="noreferrer"><span>↗</span> API docs</a>
         </nav>
 
@@ -56,7 +58,7 @@
               <p class="eyebrow">WINDOWS EVENT VIEWER</p>
               <h2>Collect and scan this host</h2>
             </div>
-            <span class="agent-badge">Gatherer → Random Forest</span>
+            <span class="agent-badge">Gatherer → Random Forest + LightGBM</span>
           </div>
           <form id="collect-form" class="collect-form">
             <label>Lookback (hours)<input name="hours" type="number" min="1" max="720" value="24" required /></label>
@@ -109,7 +111,7 @@
           </div>
         </section>
 
-        <div class="content-grid">
+        <div class="content-grid single">
           <section id="incidents" class="panel incidents-panel">
             <div class="panel-heading">
               <div>
@@ -118,19 +120,24 @@
               </div>
             </div>
             <div class="incident-tools">
+              <details class="severity-dropdown" id="severity-dropdown">
+                <summary><span id="severity-summary">All severities</span><span aria-hidden="true">▾</span></summary>
+                <fieldset class="severity-menu" id="severity-filter">
+                  <legend class="visually-hidden">Filter by severity</legend>
+                  <label class="check critical"><input type="checkbox" value="critical" checked /> Critical</label>
+                  <label class="check high"><input type="checkbox" value="high" checked /> High</label>
+                  <label class="check medium"><input type="checkbox" value="medium" checked /> Medium</label>
+                  <label class="check low"><input type="checkbox" value="low" checked /> Low</label>
+                </fieldset>
+              </details>
               <input id="incident-search" class="search-input" type="search" placeholder="Search incidents" aria-label="Search incidents" />
-              <select id="severity-filter" aria-label="Filter by severity">
-              <option value="">All severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-              </select>
               <select id="status-filter" aria-label="Filter by status">
+              <option value="active" selected>Active (unresolved)</option>
               <option value="">All statuses</option>
               <option value="approval_required">Pending approval</option>
               <option value="executed">Executed</option>
               <option value="blocked_by_policy">Blocked</option>
+              <option value="resolved">Resolved</option>
               </select>
               <button class="text-button" id="refresh-incidents">Refresh ↻</button>
             </div>
@@ -139,6 +146,8 @@
             </div>
           </section>
 
+          <!-- Manual event submission is disabled for now; re-enable together with the
+               event-form listener in app.js.
           <section id="submit" class="panel submit-panel">
             <div class="panel-heading">
               <div>
@@ -173,6 +182,7 @@
               <div id="form-message" class="form-message" role="status"></div>
             </form>
           </section>
+          -->
         </div>
 
         <section class="panel workflow-panel">
@@ -207,6 +217,6 @@
         </aside>
       </main>
     </div>
-    <script src="/app/app.js?v=3"></script>
+    <script src="/app/app.js?v=6"></script>
   </body>
 </html>

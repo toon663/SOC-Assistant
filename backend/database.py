@@ -100,6 +100,28 @@ class IncidentRepository:
             row = self.connection.execute("SELECT payload FROM incidents WHERE incident_id = ?", (incident_id,)).fetchone()
         return json.loads(row["payload"]) if row else None
 
+    def resolve_incident(self, incident_id: str, *, resolved_at: str, note: str = "") -> Optional[dict[str, Any]]:
+        """Mark an incident resolved; a later repeat of its events opens a new incident."""
+        with self._lock:
+            row = self.connection.execute("SELECT payload FROM incidents WHERE incident_id = ?", (incident_id,)).fetchone()
+            if row is None:
+                return None
+            payload = json.loads(row["payload"])
+            previous = payload.get("action_result", {}).get("status", "open")
+            payload["action_result"] = {**payload.get("action_result", {}), "status": "resolved", "previous_status": previous, "resolved_at": resolved_at}
+            entry = {"timestamp": resolved_at, "agent": "analyst", "action": "resolve_incident", "previous_status": previous, "note": note}
+            payload.setdefault("audit_log", []).append(entry)
+            self.connection.execute(
+                "UPDATE incidents SET status = 'resolved', payload = ? WHERE incident_id = ?",
+                (json.dumps(payload), incident_id),
+            )
+            self.connection.execute(
+                "INSERT INTO audit_log (incident_id, timestamp, agent, action, payload) VALUES (?, ?, ?, ?, ?)",
+                (incident_id, resolved_at, "analyst", "resolve_incident", json.dumps(entry)),
+            )
+            self.connection.commit()
+        return payload
+
     def list_incidents(self, limit: int = 100) -> list[dict[str, Any]]:
         with self._lock:
             rows = self.connection.execute("SELECT payload FROM incidents ORDER BY detected_at DESC LIMIT ?", (limit,)).fetchall()

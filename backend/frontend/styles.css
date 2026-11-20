@@ -105,6 +105,25 @@ textarea { resize: vertical; }
 .workflow-panel { margin-top: 18px; }
 .collect-panel { margin-bottom: 18px; }
 .scan-panel { margin-bottom: 18px; }
+.content-grid.single { grid-template-columns: minmax(0, 1fr); }
+.incident-tools .search-input { flex: 1 1 220px; }
+.incident-tools { margin-bottom: 18px; }
+.severity-dropdown { position: relative; flex: 0 0 auto; }
+.severity-dropdown summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 150px; padding: 7px 9px; color: var(--text); background: #081727; border: 1px solid #24405e; border-radius: 8px; font-size: 12px; cursor: pointer; }
+.severity-dropdown summary::-webkit-details-marker { display: none; }
+.severity-dropdown[open] summary { border-color: var(--blue); }
+.severity-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; display: grid; gap: 9px; min-width: 150px; margin: 0; padding: 11px 12px; background: #0d1b2d; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.check { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; cursor: pointer; }
+.check input { width: auto; margin: 0; padding: 0; cursor: pointer; }
+.check.critical, .check.high { color: var(--red); }.check.medium { color: var(--gold); }.check.low { color: var(--green); }
+.check.critical input, .check.high input { accent-color: var(--red); }.check.medium input { accent-color: var(--gold); }.check.low input { accent-color: var(--green); }
+.status-badge.resolved { color: var(--green); border-color: rgba(83,214,155,.35); }
+.drawer-actions { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.resolve-button { width: 100%; border: 1px solid rgba(83,214,155,.45); border-radius: 8px; padding: 10px 14px; color: var(--green); background: rgba(83,214,155,.08); font-size: 12px; font-weight: 800; cursor: pointer; }
+.resolve-button:hover { background: rgba(83,214,155,.16); }
+.resolve-button:disabled { cursor: wait; opacity: .6; }
+.resolved-note { color: var(--green); font-size: 12px; margin: 0; }
 .scan-note { color: var(--muted); font-size: 11px; margin: 10px 0 0; }
 .scan-result { margin-top: 14px; border-top: 1px solid var(--line); }
 .scan-result .detail-grid { grid-template-columns: 150px 1fr; }

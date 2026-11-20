@@ -61,6 +61,8 @@ WINDOWS_EVENT_TYPES = {
 }
 
 LOG_CLEARED_EVENT_IDS = {104, 1102}
+# Process launches are scanned by file_scan instead; a launch alone is not an incident.
+PROCESS_CREATION_EVENT_IDS = {4688}
 # Logon and privilege events that Windows emits constantly for service identities.
 ROUTINE_FOR_SERVICE_ACCOUNTS = {4624, 4672}
 
@@ -127,6 +129,19 @@ def severity_for(anomaly: dict[str, Any]) -> Severity:
     if level == 2 or has_mitre or anomaly.get("cisaMatches"):
         return Severity.MEDIUM
     return Severity.LOW
+
+
+def is_routine_process_launch(anomaly: dict[str, Any]) -> bool:
+    """A 4688 flagged only for its event ID or ATT&CK mapping, with no stronger evidence."""
+    event = anomaly["event"]
+    if event.get("eventId") not in PROCESS_CREATION_EVENT_IDS:
+        return False
+    reasons = anomaly.get("reasons") or []
+    return not (
+        anomaly.get("cisaMatches")
+        or event.get("level") in {1, 2}
+        or "suspicious message pattern" in reasons
+    )
 
 
 def anomaly_to_event(anomaly: dict[str, Any]) -> SecurityEvent:
@@ -249,6 +264,7 @@ class WindowsIngestService:
             "events_scanned": len(raw_events),
             "anomalies_detected": 0,
             "malware_detected": 0,
+            "process_launches_skipped": 0,
             "duplicates_skipped": 0,
             "threat_intel_loaded": False,
             "incidents": [],
@@ -270,6 +286,9 @@ class WindowsIngestService:
                 catalog=catalog,
                 threshold=threshold,
             )
+            launches = [item for item in anomalies if is_routine_process_launch(item)]
+            anomalies = [item for item in anomalies if not is_routine_process_launch(item)]
+            summary["process_launches_skipped"] = len(launches)
             events = {event.event_id: event for event in map(anomaly_to_event, anomalies)}
             malware_events, summary["malware_scan"] = self.file_scan.scan_process_events(
                 raw_events, host=document.get("computerName"), user_for=extract_user
