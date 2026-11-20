@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SOC Assistant | Security Operations Dashboard</title>
-    <link rel="stylesheet" href="/app/styles.css?v=7" />
+    <link rel="stylesheet" href="/app/styles.css?v=9" />
   </head>
   <body>
     <div class="shell">
@@ -22,6 +22,7 @@
           <a class="nav-link" href="#incidents"><span>◉</span> Incidents</a>
           <a class="nav-link" href="#collect"><span>⇣</span> Collect events</a>
           <a class="nav-link" href="#scan"><span>⌕</span> Scan a file</a>
+          <a class="nav-link" id="dev-nav" href="#dev" hidden><span>⚙</span> Test scenarios</a>
           <!-- Manual event submission is disabled for now.
           <a class="nav-link" href="#submit"><span>＋</span> Submit event</a>
           -->
@@ -66,6 +67,10 @@
             <button class="primary-button" type="submit"><span>Collect and investigate</span><span>→</span></button>
           </form>
           <div id="collect-message" class="form-message" role="status"></div>
+          <div class="live-row">
+            <button class="live-button" type="button" id="live-toggle">Start live detection</button>
+            <div id="live-status" class="live-status" role="status">Live detection is off. When on, this host is checked for new events every 30 seconds.</div>
+          </div>
         </section>
 
         <section id="scan" class="panel scan-panel">
@@ -84,6 +89,37 @@
           <p class="scan-note">The file is parsed for features only and is never executed. Malicious and suspicious files open an incident.</p>
           <div id="scan-message" class="form-message" role="status"></div>
           <div id="scan-result" class="scan-result" hidden></div>
+        </section>
+
+        <section id="dev" class="panel dev-panel" hidden>
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">DEV MODE · TEST DATA</p>
+              <h2>Test scenarios</h2>
+            </div>
+            <span class="agent-badge dev-badge">Synthetic, not real activity</span>
+          </div>
+          <div class="dev-grid">
+            <div>
+              <span class="detail-label">Attack scenarios</span>
+              <div id="dev-scenarios" class="dev-buttons"></div>
+            </div>
+            <div>
+              <span class="detail-label">Malware launch (EMBER2024 test sample, no file)</span>
+              <div class="dev-row">
+                <select id="dev-malware-sample" aria-label="Malware demo sample"></select>
+                <button class="dev-button" type="button" id="dev-malware-run">Run</button>
+              </div>
+            </div>
+            <div>
+              <span class="detail-label">Reset</span>
+              <div class="dev-buttons">
+                <button class="dev-button" type="button" id="dev-reset-events" title="The next collection treats already-seen log records as new">Forget processed events</button>
+                <button class="dev-button danger" type="button" id="dev-reset-all">Wipe all incidents</button>
+              </div>
+            </div>
+          </div>
+          <div id="dev-message" class="form-message" role="status"></div>
         </section>
 
         <section id="overview" class="page-section">
@@ -217,6 +253,6 @@
         </aside>
       </main>
     </div>
-    <script src="/app/app.js?v=7"></script>
+    <script src="/app/app.js?v=9"></script>
   </body>
 </html>

@@ -139,6 +139,28 @@ class IncidentRepository:
             self.connection.commit()
         return payload
 
+    def forget_processed_events(self) -> int:
+        """Dev mode: let the next collection treat already-seen log records as new.
+
+        Incidents are kept; group links are cleared so replayed records open fresh
+        incidents instead of merging into existing ones.
+        """
+        with self._lock:
+            count = self.connection.execute("SELECT COUNT(*) FROM ingested_events").fetchone()[0]
+            self.connection.execute("DELETE FROM ingested_events")
+            self.connection.execute("DELETE FROM incident_groups")
+            self.connection.commit()
+        return count
+
+    def wipe_all(self) -> int:
+        """Dev mode: delete every incident, audit record, and processed-event record."""
+        with self._lock:
+            count = self.connection.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
+            for table in ("incidents", "audit_log", "ingested_events", "incident_groups"):
+                self.connection.execute(f"DELETE FROM {table}")
+            self.connection.commit()
+        return count
+
     def list_incidents(self, limit: int = 100) -> list[dict[str, Any]]:
         with self._lock:
             rows = self.connection.execute("SELECT payload FROM incidents ORDER BY detected_at DESC LIMIT ?", (limit,)).fetchall()

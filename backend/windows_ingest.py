@@ -10,6 +10,7 @@ backend runs on the standard library alone.
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import platform
 import re
@@ -42,6 +43,7 @@ WINDOWS_EVENT_TYPES = {
     104: "event_log_cleared",
     1102: "audit_log_cleared",
     4616: "system_time_changed",
+    4624: "successful_logon",
     4625: "failed_logon",
     4648: "explicit_credential_logon",
     4672: "special_privileges_assigned",
@@ -344,6 +346,10 @@ class WindowsIngestService:
         # Newest first: the agents treat the first event as the primary one.
         evidence = sorted(prior_events + group, key=lambda event: event.timestamp, reverse=True)
         incident = self.pipeline.run(evidence[:MAX_STORED_EVENTS], approved=False, continues=prior)
+        if prior is None and self.repository.get_incident(incident.incident_id) is not None:
+            # Same records replayed (dev reset): keep the earlier incident as history.
+            incident.incident_id = hashlib.sha256(f"{incident.incident_id}|{incident.detected_at}".encode()).hexdigest()
+            incident.alert["fingerprint"] = incident.incident_id
 
         timestamps = [event.timestamp for event in group]
         occurrences = len(group) + prior_alert.get("occurrence_count", len(prior_events))

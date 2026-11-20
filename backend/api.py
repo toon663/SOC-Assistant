@@ -14,6 +14,7 @@ from config import settings
 from database import IncidentRepository
 from file_scan import ScanUnavailable
 from integrations import IntegrationHub
+from live_detection import LiveDetector
 from windows_ingest import DEFAULT_THRESHOLD, IngestUnavailable, WindowsIngestService
 
 try:
@@ -61,6 +62,24 @@ def create_app():
     repository = IncidentRepository(settings.database_path)
     pipeline = SecurityOperationsPipeline(systems=systems, require_approval=settings.require_human_approval)
     windows_ingest = WindowsIngestService(pipeline, repository)
+    live = LiveDetector(windows_ingest)
+
+    @app.get("/live/status")
+    def live_status() -> dict[str, Any]:
+        """Live detection state: running, last/next poll, and running totals."""
+        return live.status()
+
+    @app.post("/live/start")
+    def live_start() -> dict[str, Any]:
+        """Poll this host's Event Viewer every 30 seconds until stopped."""
+        try:
+            return live.start()
+        except IngestUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post("/live/stop")
+    def live_stop() -> dict[str, Any]:
+        return live.stop()
 
     @app.post("/ingest/windows")
     def ingest_windows(request: WindowsCollectionRequest) -> dict[str, Any]:
@@ -124,6 +143,52 @@ def create_app():
         except ScanUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return windows_ingest.ingest_scan_result(result, host=host, origin="api-upload")
+
+    @app.get("/dev/status")
+    def dev_status() -> dict[str, Any]:
+        """Whether dev mode (SOC_DEV_MODE=1) is on, and which test scenarios it offers."""
+        if not settings.dev_mode:
+            return {"enabled": False}
+        import dev_tools
+
+        return {"enabled": True, "scenarios": dev_tools.list_scenarios(), "malware_samples": dev_tools.malware_samples()}
+
+    if settings.dev_mode:
+        # Registered only in dev mode, so these test hooks do not exist otherwise.
+        import dev_tools
+
+        @app.post("/dev/scenarios/{name}")
+        def run_scenario(name: str, host: str = Query(default=dev_tools.DEFAULT_HOST, min_length=1, max_length=255)) -> dict[str, Any]:
+            """Inject a synthetic attack scenario through the full ingest pipeline."""
+            try:
+                document = dev_tools.build_scenario(name, host)
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            try:
+                return windows_ingest.ingest_document(document, source=f"dev-scenario:{name}")
+            except IngestUnavailable as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        @app.post("/dev/malware-demo")
+        def malware_demo(
+            sample: str = Query(default="", max_length=64),
+            host: str = Query(default=dev_tools.DEFAULT_HOST, min_length=1, max_length=255),
+        ) -> dict[str, Any]:
+            """Score a stored EMBER2024 test-set malware vector and open the resulting incident."""
+            try:
+                result = dev_tools.malware_demo_result(windows_ingest.file_scan.scanner, sample or None)
+            except ScanUnavailable as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            return windows_ingest.ingest_scan_result(result, host=host, origin="dev-demo")
+
+        @app.post("/dev/reset")
+        def dev_reset(scope: str = Query(pattern="^(events|all)$")) -> dict[str, Any]:
+            """events: forget processed log records so they can be replayed. all: also delete every incident."""
+            if scope == "all":
+                return {"scope": scope, "incidents_deleted": repository.wipe_all()}
+            return {"scope": scope, "events_forgotten": repository.forget_processed_events()}
 
     @app.get("/health")
     def health() -> dict[str, str]:

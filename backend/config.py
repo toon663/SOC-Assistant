@@ -23,6 +23,8 @@ class Settings:
     log_level: str = "INFO"
     memory_limit: int = 1000
     retrieval_top_k: int = 5
+    # Enables /dev endpoints (synthetic scenarios, malware demo, resets). Never enable in production.
+    dev_mode: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -35,6 +37,7 @@ class Settings:
             log_level=os.getenv("SOC_LOG_LEVEL", "INFO"),
             memory_limit=int(os.getenv("SOC_MEMORY_LIMIT", "1000")),
             retrieval_top_k=int(os.getenv("SOC_RETRIEVAL_TOP_K", "5")),
+            dev_mode=_bool("SOC_DEV_MODE", False),
         )
 
 

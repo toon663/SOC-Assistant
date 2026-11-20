@@ -106,6 +106,27 @@ textarea { resize: vertical; }
 .collect-panel { margin-bottom: 18px; }
 .scan-panel { margin-bottom: 18px; }
 .content-grid.single { grid-template-columns: minmax(0, 1fr); }
+.live-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.live-button { flex: 0 0 auto; min-width: 190px; border: 1px solid rgba(83,214,155,.45); border-radius: 8px; padding: 10px 14px; color: var(--green); background: rgba(83,214,155,.08); font-size: 12px; font-weight: 800; cursor: pointer; }
+.live-button:hover { background: rgba(83,214,155,.16); }
+.live-button.running { color: var(--red); border-color: rgba(255,111,127,.45); background: rgba(255,111,127,.08); }
+.live-button:disabled { cursor: wait; opacity: .6; }
+.live-status { flex: 1 1 300px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.live-status .live-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: live-pulse 1.6s ease-in-out infinite; }
+.live-status .warn { color: var(--gold); }
+@keyframes live-pulse { 50% { opacity: .35; } }
+.dev-panel { margin-bottom: 18px; border-color: rgba(245,189,97,.45); }
+.dev-panel .eyebrow { color: var(--gold); }
+.dev-badge { color: var(--gold); border-color: rgba(245,189,97,.4); }
+.dev-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 18px; }
+.dev-grid .detail-label { display: block; font-size: 11px; margin-bottom: 8px; }
+.dev-buttons, .dev-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dev-row select { flex: 1; margin: 0; padding: 7px 9px; }
+.dev-button { border: 1px solid rgba(245,189,97,.45); border-radius: 8px; padding: 7px 11px; color: var(--gold); background: rgba(245,189,97,.07); font-size: 12px; font-weight: 700; cursor: pointer; }
+.dev-button:hover { background: rgba(245,189,97,.16); }
+.dev-button:disabled { cursor: wait; opacity: .6; }
+.dev-button.danger { color: var(--red); border-color: rgba(255,111,127,.45); background: rgba(255,111,127,.07); }
+@media (max-width: 1000px) { .dev-grid { grid-template-columns: 1fr; } }
 .incident-tools .search-input { flex: 1 1 220px; }
 .incident-tools { margin-bottom: 18px; }
 .severity-dropdown { position: relative; flex: 0 0 auto; }

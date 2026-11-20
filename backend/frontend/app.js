@@ -242,6 +242,126 @@ async function scanFile(event) {
   }
 }
 
+const live = { status: null, changes: null };
+
+function timeOnly(value) {
+  return value ? new Date(value).toLocaleTimeString() : '—';
+}
+
+function renderLive(status) {
+  live.status = status;
+  const button = $('#live-toggle');
+  button.textContent = status.running ? 'Stop live detection' : 'Start live detection';
+  button.classList.toggle('running', status.running);
+  const t = status.totals || {};
+  const totals = `${t.events || 0} events, ${t.anomalies || 0} anomalies, ${t.malware || 0} malware, ${t.incidents_opened || 0} new incidents, ${t.incidents_updated || 0} updated`;
+  const problems = [
+    ...(status.log_errors || []).map((item) => `${item.logName} not collected: ${item.message}`),
+    ...(status.last_error ? [`Last poll failed: ${status.last_error}`] : []),
+  ];
+  const warning = problems.length ? `<br><span class="warn">${escapeHtml(problems.join(' · '))}</span>` : '';
+  let text;
+  if (status.running) {
+    text = `<span class="live-dot"></span>Live since ${escapeHtml(timeOnly(status.started_at))} · checking every ${status.interval_seconds}s · last check ${escapeHtml(timeOnly(status.last_poll_at))} · ${status.polls} checks · ${escapeHtml(totals)}`;
+  } else if (status.started_at) {
+    text = `Live detection is off. Last run from ${escapeHtml(timeOnly(status.started_at))}: ${status.polls} checks, ${escapeHtml(totals)}.`;
+  } else {
+    text = 'Live detection is off. When on, this host is checked for new events every 30 seconds.';
+  }
+  $('#live-status').innerHTML = text + warning;
+}
+
+async function refreshLive() {
+  try {
+    const status = await (await fetch('/live/status')).json();
+    const changes = (status.totals?.incidents_opened || 0) + (status.totals?.incidents_updated || 0);
+    if (live.changes !== null && changes !== live.changes) await loadIncidents();
+    live.changes = changes;
+    renderLive(status);
+  } catch {
+    // The health pill already reports an unreachable API.
+  }
+}
+
+async function toggleLive() {
+  const button = $('#live-toggle');
+  const starting = !live.status?.running;
+  button.disabled = true;
+  if (!starting) $('#live-status').textContent = 'Stopping after the current check…';
+  try {
+    const response = await fetch(starting ? '/live/start' : '/live/stop', { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Server error (${response.status}).`);
+    renderLive(result);
+  } catch (error) {
+    $('#live-status').innerHTML = `<span class="warn">${escapeHtml(error.message)}</span>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function devRequest(url, button, describe) {
+  const message = $('#dev-message');
+  button.disabled = true;
+  message.className = 'form-message';
+  message.textContent = 'Running…';
+  try {
+    const response = await fetch(url, { method: 'POST' });
+    const raw = await response.text();
+    let result;
+    try { result = raw ? JSON.parse(raw) : {}; } catch { result = {}; }
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Server error (${response.status}).`);
+    message.className = 'form-message success';
+    message.textContent = describe(result);
+    await loadIncidents();
+  } catch (error) {
+    message.className = 'form-message error';
+    message.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function loadDevStatus() {
+  let status;
+  try {
+    status = await (await fetch('/dev/status')).json();
+  } catch {
+    return;
+  }
+  if (!status.enabled) return;
+  $('#dev').hidden = false;
+  $('#dev-nav').hidden = false;
+  $('#dev-scenarios').innerHTML = status.scenarios.map((item) => `<button class="dev-button" type="button" data-scenario="${escapeHtml(item.name)}" title="${escapeHtml(item.description)}">${escapeHtml(item.title)}</button>`).join('');
+  $('#dev-scenarios').querySelectorAll('[data-scenario]').forEach((button) => {
+    button.addEventListener('click', () => devRequest(`/dev/scenarios/${encodeURIComponent(button.dataset.scenario)}`, button, (result) => {
+      const opened = result.incidents.filter((item) => !item.merged).length;
+      return `${button.textContent}: ${result.events_scanned} synthetic events, ${result.anomalies_detected} anomalies, ${opened} new incidents.`;
+    }));
+  });
+  const samples = status.malware_samples || [];
+  $('#dev-malware-sample').innerHTML = samples.length
+    ? `<option value="">Random sample</option>${samples.map((label) => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join('')}`
+    : '<option value="">No demo vectors (run build_demo_vectors.py)</option>';
+  $('#dev-malware-run').disabled = !samples.length;
+  $('#dev-malware-run').addEventListener('click', (event) => {
+    const sample = $('#dev-malware-sample').value;
+    devRequest(`/dev/malware-demo?${new URLSearchParams({ sample })}`, event.currentTarget, (result) => {
+      const scan = result.scan || {};
+      const family = scan.family ? `${scan.family} (${percent(scan.family_probability)})` : 'family uncertain';
+      return `Malware launch: ${scan.verdict}, ${family}, true family ${scan.true_family}. ${result.incident ? 'Incident opened.' : 'No incident.'}`;
+    });
+  });
+  $('#dev-reset-events').addEventListener('click', (event) => {
+    if (!confirm('Forget processed events? The next collection will re-report log records it has already seen.')) return;
+    devRequest('/dev/reset?scope=events', event.currentTarget, (result) => `Forgot ${result.events_forgotten} processed events. Incidents were kept.`);
+  });
+  $('#dev-reset-all').addEventListener('click', (event) => {
+    if (!confirm('Delete ALL incidents and audit records? This cannot be undone.')) return;
+    devRequest('/dev/reset?scope=all', event.currentTarget, (result) => `Deleted ${result.incidents_deleted} incidents.`);
+  });
+}
+
 function malwareDetails(incident) {
   const malware = incident.alert?.malware;
   if (!malware) return '';
@@ -319,4 +439,9 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 checkHealth();
 loadIncidents();
 loadScanStatus();
+loadDevStatus();
+refreshLive();
+$('#live-toggle').addEventListener('click', toggleLive);
+// Live status is cheap; the incident list reloads only when a poll changed something.
+setInterval(refreshLive, 5000);
 setInterval(() => { checkHealth(); loadIncidents(); }, 30000);

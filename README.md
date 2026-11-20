@@ -53,6 +53,10 @@ Process-creation events (Security 4688, Sysmon 1) -> file_scan.py -> Sentinel_Ag
 
 During an ingest, the executables named in process-creation events are read (never executed) and scored by a LightGBM detector trained on the EMBER2024 Windows PE dataset. Files above the 1% false-positive threshold are "suspicious" (high severity) and above the 0.1% threshold "malicious" (critical). Flagged files are also classified into one of the 100 most common malware families (or "other"), and the family's typical MITRE ATT&CK techniques and tactics are attached for the Analyst and Prognostic agents. One incident is opened per host and file hash. Process-creation auditing (event 4688) must be enabled in Windows for this to see launches. If the models are not installed, ingest continues without malware scanning.
 
+Dev mode (testing and demos)
+
+Start the backend with run_backend_dev.bat (or set SOC_DEV_MODE=1) to show a Test scenarios panel on the dashboard. It injects synthetic Windows attack scenarios (brute force, log cleared, new admin account, service install, encoded PowerShell) through the full pipeline, with fresh record IDs each run, so nothing happens on the machine itself. A malware launch demo scores stored EMBER2024 test-set feature vectors (models/demo_vectors.npz, built by build_demo_vectors.py) with the real models, so no malware file is needed. Two resets are available: forget processed events (the next collection re-reports log records already seen) and wipe all incidents. Without dev mode the /dev endpoints are not registered. Never enable dev mode outside testing.
+
 The models are not in git. To rebuild them (about 25 GB download, 105 GB extracted data, several hours of compute), install Sentinel_Agent/malware_classifier/requirements.txt and run, from the repository root: download_ember2024.py, build_features.py, train_detector.py, train_family.py, then build_family_profiles.py (all in Sentinel_Agent/malware_classifier). Test metrics are written to models/detector_metrics.json and models/family_metrics.json.
 
 Run locally
@@ -80,6 +84,8 @@ POST /ingest/document — do the same for a saved gatherer JSON export
 GET /incidents
 
 GET /incidents/{incident_id}
+
+POST /live/start, POST /live/stop, GET /live/status — live detection: poll this host's Event Viewer every 30 seconds and ingest new events (the "Start live detection" button on the dashboard)
 
 GET /scan/status — whether the malware scanner and its models are loaded
 
