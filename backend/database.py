@@ -54,6 +54,23 @@ class IncidentRepository:
             row = self.connection.execute("SELECT 1 FROM ingested_events WHERE event_id = ?", (event_id,)).fetchone()
         return row is not None
 
+    def count_events_in_resolved(self, event_ids: Iterable[str]) -> int:
+        """How many of these already-processed events belong to resolved incidents."""
+        ids = list(event_ids)
+        total = 0
+        with self._lock:
+            # Chunked to stay under SQLite's bound-parameter limit.
+            for start in range(0, len(ids), 500):
+                chunk = ids[start:start + 500]
+                placeholders = ",".join("?" * len(chunk))
+                total += self.connection.execute(
+                    f"""SELECT COUNT(*) FROM ingested_events e
+                        JOIN incidents i ON i.incident_id = e.incident_id
+                        WHERE i.status = 'resolved' AND e.event_id IN ({placeholders})""",
+                    chunk,
+                ).fetchone()[0]
+        return total
+
     def find_open_incident(self, group_key: str) -> Optional[dict[str, Any]]:
         """Return the unresolved incident for a group; acted-on incidents are not reopened."""
         with self._lock:

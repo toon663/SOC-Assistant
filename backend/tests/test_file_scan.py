@@ -145,6 +145,24 @@ class ServiceTests(unittest.TestCase):
         self.assertIsNone(self.repository.resolve_incident("missing", resolved_at="x"))
 
     @unittest.skipUnless(HAS_ML, "detector dependencies are not installed")
+    def test_resolved_records_stay_resolved_on_rescan(self):
+        failed = ("An account failed to log on.\r\n\tAccount Name:\t\tbob\r\n"
+                  "\tSource Network Address:\t203.0.113.9\r\n")
+        event = {**process_event(1, "-"), "eventId": 4625, "message": failed}
+        document = {"computerName": "HOST", "events": [event]}
+        first = self.service.ingest_document(document)
+        self.repository.resolve_incident(first["incidents"][0]["incident_id"], resolved_at="2026-11-19T12:00:00+00:00")
+
+        again = self.service.ingest_document(document)
+        self.assertEqual((again["incidents"], again["duplicates_skipped"], again["duplicates_in_resolved"]), ([], 1, 1))
+
+        document["events"].append({**event, "recordId": 2, "timeCreatedUtc": "2026-11-19T10:00:02Z"})
+        repeat = self.service.ingest_document(document)
+        self.assertEqual(len(repeat["incidents"]), 1)
+        self.assertFalse(repeat["incidents"][0]["merged"])
+        self.assertNotEqual(repeat["incidents"][0]["incident_id"], first["incidents"][0]["incident_id"])
+
+    @unittest.skipUnless(HAS_ML, "detector dependencies are not installed")
     def test_routine_process_launches_do_not_open_incidents(self):
         self.scanner.verdict = "clean"
         path = os.path.join(self.dir, "tool.exe")

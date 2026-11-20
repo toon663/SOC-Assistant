@@ -138,7 +138,7 @@ async function collectEvents(event) {
     const merged = result.incidents.filter((item) => item.merged).length;
     const scan = result.malware_scan || {};
     const malware = scan.files_scanned ? ` Scanned ${scan.files_scanned} executables: ${result.malware_detected} flagged as malware.` : '';
-    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen.${malware}`;
+    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen${result.duplicates_in_resolved ? ` (${result.duplicates_in_resolved} already resolved)` : ''}.${malware}`;
     const skipped = result.errors.map((item) => `${item.logName}: ${item.message}`).join(' ');
     message.className = `form-message ${skipped ? 'warning' : 'success'}`;
     message.textContent = skipped ? `${summary} Not collected, ${skipped}` : summary;

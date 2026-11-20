@@ -266,6 +266,7 @@ class WindowsIngestService:
             "malware_detected": 0,
             "process_launches_skipped": 0,
             "duplicates_skipped": 0,
+            "duplicates_in_resolved": 0,
             "threat_intel_loaded": False,
             "incidents": [],
             "errors": document.get("errors") or [],
@@ -302,6 +303,11 @@ class WindowsIngestService:
             ]
             summary["anomalies_detected"] = len(anomalies)
             summary["duplicates_skipped"] = len(events) - len(new_events)
+            # Records from resolved incidents stay resolved; only new occurrences open incidents.
+            new_ids = {event.event_id for event in new_events}
+            summary["duplicates_in_resolved"] = self.repository.count_events_in_resolved(
+                event_id for event_id in events if event_id not in new_ids
+            )
 
             for group in group_events(new_events):
                 summary["incidents"].append(self._record_group(group))
