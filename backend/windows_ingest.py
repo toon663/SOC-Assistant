@@ -20,6 +20,7 @@ from typing import Any, Iterable, Optional, Sequence
 
 from agents import SecurityEvent, SecurityOperationsPipeline, Severity, utc_now
 from database import IncidentRepository
+from file_scan import MALWARE_LOG_NAME, FileScanService, result_to_event
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -166,8 +167,10 @@ def group_key(event: SecurityEvent) -> str:
     """Identify repeats of one event per host, channel, event ID, and user.
 
     User stays in the key because the Orchestrator acts on the first event's user,
-    so one incident must not mix accounts.
+    so one incident must not mix accounts. Malware detections group per host and file.
     """
+    if event.metadata.get("sha256"):
+        return f"{event.host}|{MALWARE_LOG_NAME}|{event.metadata['sha256']}"
     return "|".join(
         str(part)
         for part in (event.host, event.metadata.get("log_name"), event.metadata.get("windows_event_id"), event.user)
@@ -198,9 +201,16 @@ def _load_detector() -> Any:
 class WindowsIngestService:
     """Run collection and detection, then feed new anomalies through the agents."""
 
-    def __init__(self, pipeline: SecurityOperationsPipeline, repository: IncidentRepository):
+    def __init__(
+        self,
+        pipeline: SecurityOperationsPipeline,
+        repository: IncidentRepository,
+        file_scan: Optional[FileScanService] = None,
+    ):
         self.pipeline = pipeline
         self.repository = repository
+        # Scans executables from process-creation events; models load on first use.
+        self.file_scan = file_scan or FileScanService()
         # Serializes ingests so concurrent requests cannot both process one event.
         self._lock = threading.Lock()
 
@@ -238,6 +248,7 @@ class WindowsIngestService:
             "source": source,
             "events_scanned": len(raw_events),
             "anomalies_detected": 0,
+            "malware_detected": 0,
             "duplicates_skipped": 0,
             "threat_intel_loaded": False,
             "incidents": [],
@@ -260,6 +271,12 @@ class WindowsIngestService:
                 threshold=threshold,
             )
             events = {event.event_id: event for event in map(anomaly_to_event, anomalies)}
+            malware_events, summary["malware_scan"] = self.file_scan.scan_process_events(
+                raw_events, host=document.get("computerName"), user_for=extract_user
+            )
+            summary["malware_detected"] = len(malware_events)
+            for event in malware_events:
+                events.setdefault(event.event_id, event)
             new_events = [
                 event for event_id, event in events.items()
                 if not self.repository.is_event_ingested(event_id)
@@ -270,6 +287,27 @@ class WindowsIngestService:
             for group in group_events(new_events):
                 summary["incidents"].append(self._record_group(group))
         return summary
+
+    def ingest_scan_result(
+        self,
+        result: dict[str, Any],
+        *,
+        host: Optional[str],
+        origin: str = "on-demand",
+    ) -> dict[str, Any]:
+        """Open an incident for an on-demand scan; clean files and repeats open none."""
+        event = result_to_event(result, host=host, origin=origin)
+        response: dict[str, Any] = {"scan": result, "incident": None, "already_reported": False}
+        if event is None:
+            return response
+        with self._lock:
+            if self.repository.is_event_ingested(event.event_id):
+                response["already_reported"] = True
+                prior = self.repository.find_open_incident(group_key(event))
+                response["incident_id"] = prior["incident_id"] if prior else None
+                return response
+            response["incident"] = self._record_group([event])
+        return response
 
     def _record_group(self, group: list[SecurityEvent]) -> dict[str, Any]:
         """Open an incident for a group, or add its events to the group's open incident."""

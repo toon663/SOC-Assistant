@@ -170,7 +170,7 @@ class SentinelAgent:
             anomaly_score=round(anomaly_score, 2),
         )
         incident.alert = {
-            "title": f"Potential {event_list[0].event_type} incident",
+            "title": self._title(event_list[0]),
             "normalized_event_count": len(event_list),
             "severity": self._severity_from_score(anomaly_score).value,
             "fingerprint": fingerprint,
@@ -184,6 +184,13 @@ class SentinelAgent:
         incident.record(self.name, "generate_alert", alert=incident.alert)
         incident.record(self.name, "log_incident", normalized_event_count=len(event_list))
         return incident
+
+    @staticmethod
+    def _title(event: SecurityEvent) -> str:
+        if event.metadata.get("sha256"):
+            family = event.metadata.get("malware_family") or "unknown family"
+            return f"Malware detected: {family} ({event.metadata.get('file_name') or event.metadata['sha256'][:12]})"
+        return f"Potential {event.event_type} incident"
 
     @staticmethod
     def _event_signal(event: SecurityEvent) -> float:
@@ -206,7 +213,7 @@ class SentinelAgent:
             dict.fromkeys(r for e in events for r in e.metadata.get("reasons", []))
         )
         primary = events[0]
-        return {
+        details = {
             "summary": (
                 f"Detector flagged events from "
                 f"{primary.destination or primary.source} on "
@@ -216,6 +223,17 @@ class SentinelAgent:
             "mitre_techniques": techniques,
             "detection_reasons": reasons,
         }
+        if primary.metadata.get("sha256"):
+            meta = primary.metadata
+            details["malware"] = {
+                key: meta.get(key)
+                for key in (
+                    "verdict", "malware_family", "family_probability", "family_candidates",
+                    "sha256", "file_path", "file_name", "attack_tactics", "explanation",
+                )
+            }
+            details["summary"] = f"{primary.message} {'; '.join(reasons)}."
+        return details
 
     @staticmethod
     def _severity_from_score(score: float) -> Severity:
@@ -278,6 +296,10 @@ class PrognosticAgent:
         path = ["credential misuse", "lateral movement", "data access"]
         if forecast_score < 50:
             path = ["contained anomaly"]
+        # A classified malware family brings the ATT&CK tactics its samples typically show.
+        tactics = incident.events[0].metadata.get("attack_tactics")
+        if tactics:
+            path = list(tactics)
         incident.forecast = {
             "forecast_score": round(forecast_score, 2),
             "risk_path": path,

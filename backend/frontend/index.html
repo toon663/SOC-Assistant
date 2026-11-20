@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SOC Assistant | Security Operations Dashboard</title>
-    <link rel="stylesheet" href="/app/styles.css" />
+    <link rel="stylesheet" href="/app/styles.css?v=3" />
   </head>
   <body>
     <div class="shell">
@@ -21,6 +21,7 @@
           <a class="nav-link active" href="#overview"><span>▦</span> Overview</a>
           <a class="nav-link" href="#incidents"><span>◉</span> Incidents</a>
           <a class="nav-link" href="#collect"><span>⇣</span> Collect events</a>
+          <a class="nav-link" href="#scan"><span>⌕</span> Scan a file</a>
           <a class="nav-link" href="#submit"><span>＋</span> Submit event</a>
           <a class="nav-link" href="/docs" target="_blank" rel="noreferrer"><span>↗</span> API docs</a>
         </nav>
@@ -48,6 +49,40 @@
             <button class="icon-button" id="refresh-button" title="Refresh dashboard" aria-label="Refresh dashboard">↻</button>
           </div>
         </header>
+
+        <section id="collect" class="panel collect-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">WINDOWS EVENT VIEWER</p>
+              <h2>Collect and scan this host</h2>
+            </div>
+            <span class="agent-badge">Gatherer → Random Forest</span>
+          </div>
+          <form id="collect-form" class="collect-form">
+            <label>Lookback (hours)<input name="hours" type="number" min="1" max="720" value="24" required /></label>
+            <label>Max events per log<input name="max_events_per_log" type="number" min="1" max="5000" value="500" required /></label>
+            <button class="primary-button" type="submit"><span>Collect and investigate</span><span>→</span></button>
+          </form>
+          <div id="collect-message" class="form-message" role="status"></div>
+        </section>
+
+        <section id="scan" class="panel scan-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">STATIC MALWARE ANALYSIS</p>
+              <h2>Scan a file</h2>
+            </div>
+            <span class="agent-badge" id="scan-badge">Sentinel → LightGBM</span>
+          </div>
+          <form id="scan-form" class="collect-form">
+            <label>Windows executable (.exe, .dll, up to 128 MB)<input name="file" type="file" required /></label>
+            <label>Host it came from<input name="host" value="uploaded-sample" maxlength="255" required /></label>
+            <button class="primary-button" type="submit"><span>Scan file</span><span>→</span></button>
+          </form>
+          <p class="scan-note">The file is parsed for features only and is never executed. Malicious and suspicious files open an incident.</p>
+          <div id="scan-message" class="form-message" role="status"></div>
+          <div id="scan-result" class="scan-result" hidden></div>
+        </section>
 
         <section id="overview" class="page-section">
           <div class="metric-grid">
@@ -140,22 +175,6 @@
           </section>
         </div>
 
-        <section id="collect" class="panel collect-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">WINDOWS EVENT VIEWER</p>
-              <h2>Collect and scan this host</h2>
-            </div>
-            <span class="agent-badge">Gatherer → Random Forest</span>
-          </div>
-          <form id="collect-form" class="collect-form">
-            <label>Lookback (hours)<input name="hours" type="number" min="1" max="720" value="24" required /></label>
-            <label>Max events per log<input name="max_events_per_log" type="number" min="1" max="5000" value="500" required /></label>
-            <button class="primary-button" type="submit"><span>Collect and investigate</span><span>→</span></button>
-          </form>
-          <div id="collect-message" class="form-message" role="status"></div>
-        </section>
-
         <section class="panel workflow-panel">
           <div class="panel-heading">
             <div>
@@ -188,6 +207,6 @@
         </aside>
       </main>
     </div>
-    <script src="/app/app.js"></script>
+    <script src="/app/app.js?v=3"></script>
   </body>
 </html>

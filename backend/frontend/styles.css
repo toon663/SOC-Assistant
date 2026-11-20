@@ -102,7 +102,16 @@ textarea { resize: vertical; }
 .form-message { min-height: 18px; color: var(--muted); font-size: 11px; margin-top: 10px; }
 .form-message.success { color: var(--green); }.form-message.error { color: var(--red); }
 .agent-badge { color: var(--blue); border-color: rgba(77,179,255,.3); }
-.workflow-panel, .collect-panel { margin-top: 18px; }
+.workflow-panel { margin-top: 18px; }
+.collect-panel { margin-bottom: 18px; }
+.scan-panel { margin-bottom: 18px; }
+.scan-note { color: var(--muted); font-size: 11px; margin: 10px 0 0; }
+.scan-result { margin-top: 14px; border-top: 1px solid var(--line); }
+.scan-result .detail-grid { grid-template-columns: 150px 1fr; }
+.verdict { font-weight: 800; text-transform: uppercase; letter-spacing: .6px; }
+.verdict.malicious { color: var(--red); }.verdict.suspicious { color: var(--gold); }.verdict.clean { color: var(--green); }
+.scan-actions { padding-top: 14px; }
+.scan-actions .text-button { color: var(--blue); cursor: pointer; }
 .collect-form { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 12px; align-items: end; }
 .collect-form label { margin-bottom: 0; }
 .form-message.warning { color: var(--gold); }

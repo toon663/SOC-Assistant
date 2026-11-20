@@ -131,7 +131,9 @@ async function collectEvents(event) {
     try { result = raw ? JSON.parse(raw) : {}; } catch { result = {}; }
     if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Server error (${response.status}). Check the API console.`);
     const merged = result.incidents.filter((item) => item.merged).length;
-    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen.`;
+    const scan = result.malware_scan || {};
+    const malware = scan.files_scanned ? ` Scanned ${scan.files_scanned} executables: ${result.malware_detected} flagged as malware.` : '';
+    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen.${malware}`;
     const skipped = result.errors.map((item) => `${item.logName}: ${item.message}`).join(' ');
     message.className = `form-message ${skipped ? 'warning' : 'success'}`;
     message.textContent = skipped ? `${summary} Not collected, ${skipped}` : summary;
@@ -144,11 +146,110 @@ async function collectEvents(event) {
   }
 }
 
+const MAX_SCAN_BYTES = 128 * 1024 * 1024;
+
+async function loadScanStatus() {
+  try {
+    const response = await fetch('/scan/status');
+    const status = await response.json();
+    $('#scan-badge').textContent = status.available ? `Sentinel → LightGBM · ${status.family_classes - 1} families` : 'Scanner unavailable';
+    if (!status.available) {
+      $('#scan-message').className = 'form-message warning';
+      $('#scan-message').textContent = status.detail || 'Malware models are not installed.';
+    }
+  } catch {
+    $('#scan-badge').textContent = 'Scanner unavailable';
+  }
+}
+
+function percent(value) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+function renderScanResult(result) {
+  const scan = result.scan || {};
+  const container = $('#scan-result');
+  const verdict = scan.verdict || 'unknown';
+  const candidates = (scan.family_candidates || []).map((item) => `${item.family} ${percent(item.probability)}`).join(', ');
+  const cutoff = percent(scan.family_min_probability ?? 0.75);
+  let family = 'Not classified (file is clean)';
+  if (scan.family) family = `${scan.family} (${percent(scan.family_probability)})`;
+  else if (candidates) family = `Uncertain: below ${cutoff} confidence`;
+  const explanation = scan.explanation || {};
+  const drivers = (items) => items.map((item) => item.feature_group).join(', ') || 'None';
+  const tactics = scan.family_profile?.tactics?.join(', ');
+  const techniques = (scan.family_profile?.techniques || []).map((item) => `${item.id} ${item.name}`).join(', ');
+  const score = scan.score == null ? 'n/a' : Number(scan.score).toFixed(4);
+  let incident = 'None opened (clean or unsupported file)';
+  const incidentId = result.incident?.incident_id || result.incident_id;
+  if (result.incident) incident = `${result.incident.title} · ${String(result.incident.status || '').replaceAll('_', ' ')}`;
+  else if (result.already_reported) incident = 'Already reported for this host';
+  const rows = [
+    ['Verdict', `<span class="verdict ${escapeHtml(verdict)}">${escapeHtml(verdict)}</span>${scan.note ? ` · ${escapeHtml(scan.note)}` : ''}`],
+    ['Malware score', `${escapeHtml(score)} <span class="incident-meta">(suspicious ≥ ${escapeHtml(scan.suspicious_threshold)}, malicious ≥ ${escapeHtml(scan.malicious_threshold)})</span>`],
+    ['Family', escapeHtml(family)],
+    ['Candidates', escapeHtml(candidates || '—')],
+    ['Typical tactics', escapeHtml(tactics || '—')],
+    ['Typical techniques', escapeHtml(techniques || '—')],
+    ['Toward malicious', escapeHtml(drivers(explanation.toward_malicious || []))],
+    ['Toward benign', escapeHtml(drivers(explanation.toward_benign || []))],
+    ['File', escapeHtml(`${scan.file_name || 'unknown'} · ${Number(scan.size_bytes || 0).toLocaleString()} bytes`)],
+    ['SHA-256', escapeHtml(scan.sha256 || '—')],
+    ['Incident', escapeHtml(incident)],
+  ];
+  container.innerHTML = `<dl class="detail-grid">${rows.map(([label, value]) => `<dt>${label}</dt><dd>${value}</dd>`).join('')}</dl>${incidentId ? `<div class="scan-actions"><button class="text-button" type="button" data-open-incident="${escapeHtml(incidentId)}">Open incident →</button></div>` : ''}`;
+  container.hidden = false;
+  const open = container.querySelector('[data-open-incident]');
+  if (open) open.addEventListener('click', () => openDrawer(open.dataset.openIncident));
+}
+
+async function scanFile(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = $('#scan-message');
+  const submitButton = form.querySelector('button[type="submit"]');
+  const file = form.elements.file.files[0];
+  if (!file) return;
+  if (file.size > MAX_SCAN_BYTES) {
+    message.className = 'form-message error';
+    message.textContent = 'File is larger than 128 MB.';
+    return;
+  }
+  submitButton.disabled = true;
+  message.className = 'form-message';
+  message.textContent = `Scanning ${file.name}…`;
+  try {
+    const params = new URLSearchParams({ filename: file.name, host: form.elements.host.value.trim() || 'uploaded-sample' });
+    const response = await fetch(`/scan/upload?${params}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
+    const raw = await response.text();
+    let result;
+    try { result = raw ? JSON.parse(raw) : {}; } catch { result = {}; }
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Server error (${response.status}). Check the API console.`);
+    message.className = 'form-message success';
+    message.textContent = `Scanned ${file.name}.`;
+    await loadIncidents();
+    renderScanResult(result);
+  } catch (error) {
+    message.className = 'form-message error';
+    message.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+function malwareDetails(incident) {
+  const malware = incident.alert?.malware;
+  if (!malware) return '';
+  const family = malware.malware_family ? `${malware.malware_family} (${Math.round((malware.family_probability || 0) * 100)}%)` : 'Unknown family';
+  const candidates = (malware.family_candidates || []).map((item) => `${item.family} ${Math.round(item.probability * 100)}%`).join(', ');
+  return `<div class="detail-section"><span class="detail-label">Malware scan</span><dl class="detail-grid"><dt>Verdict</dt><dd>${escapeHtml(malware.verdict || 'Unknown')}</dd><dt>Family</dt><dd>${escapeHtml(family)}</dd><dt>Candidates</dt><dd>${escapeHtml(candidates || 'None')}</dd><dt>File</dt><dd>${escapeHtml(malware.file_path || malware.file_name || 'Unknown')}</dd><dt>SHA-256</dt><dd>${escapeHtml(malware.sha256 || '')}</dd><dt>Typical tactics</dt><dd>${escapeHtml((malware.attack_tactics || []).join(', ') || 'Not profiled')}</dd></dl></div>`;
+}
+
 function detectionDetails(incident) {
   const techniques = incident.alert?.mitre_techniques || [];
   const reasons = incident.alert?.detection_reasons || [];
   if (!techniques.length && !reasons.length) return '';
-  return `<div class="detail-section"><span class="detail-label">MITRE ATT&amp;CK</span><p>${escapeHtml(techniques.join(', ') || 'No mapped techniques')}</p></div><div class="detail-section"><span class="detail-label">Detection reasons</span><p>${escapeHtml(reasons.join('; ') || 'Model score only')}</p></div>`;
+  return `${malwareDetails(incident)}<div class="detail-section"><span class="detail-label">MITRE ATT&amp;CK</span><p>${escapeHtml(techniques.join(', ') || 'No mapped techniques')}</p></div><div class="detail-section"><span class="detail-label">Detection reasons</span><p>${escapeHtml(reasons.join('; ') || 'Model score only')}</p></div>`;
 }
 
 function openDrawer(incidentId) {
@@ -170,6 +271,7 @@ function closeDrawer() {
 
 $('#event-form').addEventListener('submit', submitEvent);
 $('#collect-form').addEventListener('submit', collectEvents);
+$('#scan-form').addEventListener('submit', scanFile);
 $('#refresh-button').addEventListener('click', async () => { await checkHealth(); await loadIncidents(); });
 $('#refresh-incidents').addEventListener('click', loadIncidents);
 $('#incident-search').addEventListener('input', renderIncidents);
@@ -180,4 +282,5 @@ document.querySelector('[data-close-drawer]').addEventListener('click', closeDra
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDrawer(); });
 checkHealth();
 loadIncidents();
+loadScanStatus();
 setInterval(() => { checkHealth(); loadIncidents(); }, 30000);
