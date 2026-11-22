@@ -151,6 +151,24 @@ class SentinelAgent:
 
     name = "sentinel"
 
+    def inspect_computer(self, batch: SecurityLogBatch) -> List[SecurityEvent]:
+        """Select Windows Security log findings for the existing pipeline."""
+        return [
+            SecurityEvent(
+                event_id=finding["event_id"],
+                timestamp=finding["timestamp"],
+                source="windows-security-log",
+                event_type=finding["event_type"],
+                host=finding["host"],
+                user=finding["user"],
+                source_ip=finding["source_ip"],
+                message=finding["message"],
+                severity=Severity(finding["severity"]),
+                metadata=finding,
+            )
+            for finding in detect_anomalies(batch)
+        ]
+
     def detect_anomaly(self, events: Iterable[SecurityEvent]) -> Incident:
         event_list = list(events)
         if not event_list:
@@ -387,6 +405,38 @@ class OrchestratorAgent:
             incident.record(self.name, "pause_for_approval")
             return incident
 
+        return self._execute_playbook(incident)
+
+    def review_response(
+        self, incident: Incident, decision: str, reviewer: str, reason: str
+    ) -> Incident:
+        """Resume only the stored pending response after a recorded human decision."""
+        if incident.action_result.get("status") != "approval_required":
+            raise ValueError("This incident is no longer awaiting approval")
+        if decision not in {"approve", "deny"}:
+            raise ValueError("decision must be approve or deny")
+        if not reviewer.strip() or not reason.strip():
+            raise ValueError("reviewer and reason are required")
+        approval = {
+            "decision": decision,
+            "reviewer": reviewer.strip(),
+            "reason": reason.strip(),
+            "decided_at": utc_now(),
+        }
+        incident.record("human", "response_decision", **approval, playbook=incident.selected_playbook)
+        if decision == "deny":
+            incident.action_result = {"status": "denied", "actions": [], "playbook": incident.selected_playbook}
+        else:
+            self._execute_playbook(incident)
+        incident.action_result["approval"] = approval
+        return incident
+
+    def _execute_playbook(self, incident: Incident) -> Incident:
+        """Execute the reviewed playbook without selecting a different response."""
+        if incident.selected_playbook not in {
+            "monitor_and_investigate", "contain_endpoint", "contain_and_disable_user"
+        }:
+            raise ValueError("Unknown response playbook")
         primary = incident.events[0]
         actions = []
         if incident.selected_playbook in {"contain_endpoint", "contain_and_disable_user"}:

@@ -7,7 +7,7 @@ import sqlite3
 import threading
 from typing import Any, Iterable, Optional
 
-from agents import Incident, incident_to_dict
+from agents import Incident, incident_from_dict, incident_to_dict
 
 
 class IncidentRepository:

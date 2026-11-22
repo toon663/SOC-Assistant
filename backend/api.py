@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 from fastapi.staticfiles import StaticFiles
 
 
@@ -232,6 +233,27 @@ def create_app():
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
+
+    @app.post("/scan")
+    def scan_computer() -> dict[str, Any]:
+        """Scan the backend host on demand; persist an incident only for findings."""
+        try:
+            batch = gather_security_events()
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except (RuntimeError, OSError) as exc:
+            logging.getLogger(__name__).exception("Computer scan failed")
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        events = pipeline.sentinel.inspect_computer(batch)
+        incident = None
+        if events:
+            incident = pipeline.run(events, approved=False)
+            incident = repository.save_incident(incident)
+        return {
+            "snapshot": asdict(batch),
+            "anomalies": [event.metadata for event in events],
+            "incident": incident,
+        }
 
 
 
