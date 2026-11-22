@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "agent": "sentinel_anomaly_agent",
+  "model": "RandomForestClassifier",
+  "detectedAtUtc": "2026-10-18T23:15:12.405713+00:00",
+  "sourceFile": "..\\Event_Gatherer\\events\\sample_events.json",
+  "sourceEventCount": 10,
+  "anomalyCount": 0,
+  "threshold": 0.5,
+  "threatIntel": {
+    "fetchedAtUtc": "2026-10-18T23:15:07.647656+00:00",
+    "sources": {
+      "mitreAttack": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+      "mitreCar": "https://github.com/mitre-attack/car",
+      "cisaKev": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    },
+    "stats": {
+      "attackWindowsAnalytics": 476,
+      "attackMappedKeys": 158,
+      "attackNativeEventIds": 59,
+      "cisaKevCount": 1748,
+      "cisaKeywords": 400,
+      "carAnalyticsFetched": 102,
+      "carAnalyticsErrors": 0,
+      "carNativeEventIds": 9,
+      "totalMappedKeys": 168
+    }
+  },
+  "anomalies": []
+}

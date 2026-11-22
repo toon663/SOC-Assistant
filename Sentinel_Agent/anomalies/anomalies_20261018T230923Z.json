@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "agent": "sentinel_anomaly_agent",
+  "model": "RandomForestClassifier",
+  "detectedAtUtc": "2026-10-18T23:09:23.708853+00:00",
+  "sourceFile": "..\\Event_Gatherer\\events\\sample_events.json",
+  "sourceEventCount": 10,
+  "anomalyCount": 1,
+  "threshold": 0.5,
+  "anomalies": [
+    {
+      "anomalyId": "rf-5586-9",
+      "detectedAtUtc": "2026-10-18T23:09:23.703603+00:00",
+      "sourceFile": "..\\Event_Gatherer\\events\\sample_events.json",
+      "computerName": "DatabaseII",
+      "score": 0.5483,
+      "threshold": 0.5,
+      "model": "RandomForestClassifier",
+      "reasons": [
+        "severity level Error"
+      ],
+      "event": {
+        "recordId": 5586,
+        "timeCreatedUtc": "2026-10-18T22:42:00.7345308Z",
+        "eventId": 467,
+        "provider": "ESENT",
+        "level": 2,
+        "levelName": "Error",
+        "logName": "Application",
+        "task": "Database Corruption",
+        "userId": null,
+        "processId": 6620,
+        "message": "svchost (6620,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0)."
+      },
+      "status": "open",
+      "nextHop": "triage_agent"
+    }
+  ]
+}
