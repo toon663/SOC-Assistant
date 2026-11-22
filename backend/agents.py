@@ -15,7 +15,7 @@ real SIEM, EDR, identity, threat-intelligence, and ticketing integrations.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Protocol
@@ -25,8 +25,7 @@ import json
 import math
 import re
 
-from anomaly import detect_anomalies
-from gatherer import SecurityLogBatch
+from analyst import RelatedEvent, triage
 
 
 def utc_now() -> str:
@@ -64,6 +63,9 @@ class SecurityEvent:
     message: str = ""
     severity: Severity = Severity.LOW
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # Probability (0-1) from an upstream detector such as the Random Forest in
+    # Sentinel_Agent. None means the event was submitted without ML scoring.
+    detector_score: Optional[float] = None
 
 
 @dataclass
@@ -172,7 +174,7 @@ class SentinelAgent:
         if not event_list:
             raise ValueError("At least one security event is required")
 
-        severity_score = max(SEVERITY_SCORE[e.severity] for e in event_list)
+        severity_score = max(self._event_signal(e) for e in event_list)
         unusual_types = {e.event_type.lower() for e in event_list}
         repetition_bonus = min(20.0, max(0, len(event_list) - 1) * 5.0)
         diversity_bonus = 10.0 if len(unusual_types) > 1 else 0.0
@@ -188,15 +190,70 @@ class SentinelAgent:
             anomaly_score=round(anomaly_score, 2),
         )
         incident.alert = {
-            "title": f"Potential {event_list[0].event_type} incident",
+            "title": self._title(event_list[0]),
             "normalized_event_count": len(event_list),
             "severity": self._severity_from_score(anomaly_score).value,
             "fingerprint": fingerprint,
+            "occurrence_count": len(event_list),
+            "first_seen": min(e.timestamp for e in event_list),
+            "last_seen": max(e.timestamp for e in event_list),
         }
+        if any(e.detector_score is not None for e in event_list):
+            incident.alert.update(self._detection_details(event_list))
         incident.record(self.name, "detect_anomaly", anomaly_score=incident.anomaly_score)
         incident.record(self.name, "generate_alert", alert=incident.alert)
         incident.record(self.name, "log_incident", normalized_event_count=len(event_list))
         return incident
+
+    @staticmethod
+    def _title(event: SecurityEvent) -> str:
+        if event.metadata.get("sha256"):
+            family = event.metadata.get("malware_family") or "unknown family"
+            return f"Malware detected: {family} ({event.metadata.get('file_name') or event.metadata['sha256'][:12]})"
+        return f"Potential {event.event_type} incident"
+
+    @staticmethod
+    def _event_signal(event: SecurityEvent) -> float:
+        """Blend evidence-based severity with the detector's probability.
+
+        The Random Forest is trained on weak labels and scores nearly every hit
+        close to 1.0, so its probability cannot stand in for severity by itself.
+        """
+        severity_score = SEVERITY_SCORE[event.severity]
+        if event.detector_score is None:
+            return severity_score
+        return 0.6 * severity_score + 0.4 * event.detector_score * 100
+
+    @staticmethod
+    def _detection_details(events: List[SecurityEvent]) -> Dict[str, Any]:
+        techniques = sorted(
+            {t for e in events for t in e.metadata.get("mitre_techniques", [])}
+        )
+        reasons = list(
+            dict.fromkeys(r for e in events for r in e.metadata.get("reasons", []))
+        )
+        primary = events[0]
+        details = {
+            "summary": (
+                f"Detector flagged events from "
+                f"{primary.destination or primary.source} on "
+                f"{primary.host or 'unknown host'}: {'; '.join(reasons) or 'model score'}."
+            ),
+            "detector_score": max(e.detector_score or 0.0 for e in events),
+            "mitre_techniques": techniques,
+            "detection_reasons": reasons,
+        }
+        if primary.metadata.get("sha256"):
+            meta = primary.metadata
+            details["malware"] = {
+                key: meta.get(key)
+                for key in (
+                    "verdict", "malware_family", "family_probability", "family_candidates",
+                    "sha256", "file_path", "file_name", "attack_tactics", "explanation",
+                )
+            }
+            details["summary"] = f"{primary.message} {'; '.join(reasons)}."
+        return details
 
     @staticmethod
     def _severity_from_score(score: float) -> Severity:
@@ -210,35 +267,44 @@ class SentinelAgent:
 
 
 class AnalystAgent:
-    """Enrich events with asset context and triage correlated risk."""
+    """Triage a Sentinel incident: verdict, priority, evidence, and next steps.
+
+    The rules live in analyst.py. ``related`` is other activity on the same host
+    (other incidents, other events from the same collection) used for correlation.
+    """
 
     name = "analyst"
 
     def __init__(self, systems: ExternalSystems):
         self.systems = systems
 
-    def analyze(self, incident: Incident) -> Incident:
+    def analyze(self, incident: Incident, related: Iterable[RelatedEvent] = ()) -> Incident:
         primary = incident.events[0]
         incident.asset_context = self.systems.lookup_asset(primary.user, primary.host)
+        incident.record(self.name, "request_asset_context", context=incident.asset_context)
 
         unique_keys = {
             (event.user, event.host, event.event_type, event.source_ip)
             for event in incident.events
         }
-        duplicate_count = len(incident.events) - len(unique_keys)
-        impact_modifier = 15 if incident.asset_context.get("criticality") == "high" else 0
-        risk_score = min(
-            100.0,
-            incident.anomaly_score + impact_modifier + min(10, duplicate_count * 2),
+        analysis = triage(incident, related, incident.asset_context)
+        analysis["correlated_events"] = len(unique_keys)
+        analysis["duplicates_removed"] = len(incident.events) - len(unique_keys)
+        analysis["triaged_at"] = utc_now()
+        incident.risk_analysis = analysis
+        incident.record(
+            self.name,
+            "correlate_and_deduplicate",
+            correlations=len(analysis["correlations"]),
+            duplicates_removed=analysis["duplicates_removed"],
         )
-        incident.risk_analysis = {
-            "risk_score": round(risk_score, 2),
-            "correlated_events": len(unique_keys),
-            "duplicates_removed": duplicate_count,
-            "triage": "urgent" if risk_score >= 70 else "standard",
-        }
-        incident.record(self.name, "request_asset_context", context=incident.asset_context)
-        incident.record(self.name, "analyze_risk_impact", analysis=incident.risk_analysis)
+        incident.record(
+            self.name,
+            "analyze_risk_impact",
+            verdict=analysis["verdict"],
+            priority=analysis["priority"],
+            risk_score=analysis["risk_score"],
+        )
         return incident
 
 
@@ -259,6 +325,10 @@ class PrognosticAgent:
         path = ["credential misuse", "lateral movement", "data access"]
         if forecast_score < 50:
             path = ["contained anomaly"]
+        # A classified malware family brings the ATT&CK tactics its samples typically show.
+        tactics = incident.events[0].metadata.get("attack_tactics")
+        if tactics:
+            path = list(tactics)
         incident.forecast = {
             "forecast_score": round(forecast_score, 2),
             "risk_path": path,
@@ -311,7 +381,7 @@ class OrchestratorAgent:
         self.require_approval = require_approval
 
     def create_risk_report(self, incident: Incident) -> Incident:
-        ticket_id = self.systems.create_ticket(incident)
+        ticket_id = incident.alert.get("ticket_id") or self.systems.create_ticket(incident)
         incident.response_options = self._response_options(incident)
         incident.alert["ticket_id"] = ticket_id
         incident.record(self.name, "send_risk_report", ticket_id=ticket_id)
@@ -413,10 +483,32 @@ class SecurityOperationsPipeline:
         self.orchestrator = OrchestratorAgent(systems, require_approval=require_approval)
 
     def run(
-        self, events: Iterable[SecurityEvent], approved: bool = False
+        self,
+        events: Iterable[SecurityEvent],
+        approved: bool = False,
+        continues: Optional[Dict[str, Any]] = None,
+        related: Iterable[RelatedEvent] = (),
+        occurrences: Optional[int] = None,
     ) -> Incident:
+        """Run the workflow; ``continues`` is a stored incident to re-assess in place.
+
+        ``related`` is other activity on the host that the Analyst correlates with.
+        ``occurrences`` is the exact repeat count when ``events`` is capped evidence.
+        """
         incident = self.sentinel.detect_anomaly(events)
-        self.analyst.analyze(incident)
+        if occurrences:
+            incident.alert["occurrence_count"] = occurrences
+        if continues:
+            incident.incident_id = continues["incident_id"]
+            incident.detected_at = continues["detected_at"]
+            incident.alert["fingerprint"] = continues["incident_id"]
+            incident.alert["ticket_id"] = continues.get("alert", {}).get("ticket_id")
+            incident.audit_log = continues.get("audit_log", []) + incident.audit_log
+        self.analyst.analyze(incident, related)
+        return self.reassess(incident, approved=approved)
+
+    def reassess(self, incident: Incident, approved: bool = False) -> Incident:
+        """Run the agents after the Analyst, e.g. after a Claude review changed the triage."""
         self.prognostic.forecast_risk(incident)
         self.bi.assess(incident)
         self.orchestrator.create_risk_report(incident)
@@ -434,14 +526,11 @@ def incident_to_dict(incident: Incident) -> Dict[str, Any]:
     return result
 
 
-def incident_from_dict(payload: Dict[str, Any]) -> Incident:
-    """Restore persisted workflow state without rerunning detection or triage."""
-    values = dict(payload)
-    values["events"] = [
-        SecurityEvent(**{**event, "severity": Severity(event["severity"])})
-        for event in payload["events"]
-    ]
-    return Incident(**values)
+def incident_from_dict(data: Dict[str, Any]) -> Incident:
+    """Rebuild an Incident from ``incident_to_dict`` output (e.g. a stored payload)."""
+    names = {item.name for item in fields(Incident)}
+    events = [SecurityEvent(**{**event, "severity": Severity(event["severity"])}) for event in data["events"]]
+    return Incident(**{**{key: value for key, value in data.items() if key in names}, "events": events})
 
 
 def demo() -> None:

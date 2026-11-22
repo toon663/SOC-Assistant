@@ -15,6 +15,10 @@ Modules
 
 agents.py — end-to-end Sentinel, Analyst, Prognostic, BI, and Orchestrator workflow
 
+analyst.py — Analyst agent triage rules: verdict, priority, correlation, and next steps
+
+llm_analyst.py — Claude review of incidents the rules leave unresolved (optional)
+
 models.py — validated boundary models
 
 ml_models.py — local baselines for anomaly scoring, triage, deduplication, and forecasting
@@ -35,9 +39,57 @@ api.py — optional FastAPI service
 
 config.py — environment-backed settings
 
+windows_ingest.py — connects Event_Gatherer and Sentinel_Agent to the agent workflow
+
+file_scan.py — static malware scanning of executables for the Sentinel agent
+
+Windows event pipeline
+
+Event_Gatherer -> Sentinel_Agent Random Forest -> windows_ingest.py -> Sentinel -> Analyst -> Prognostic -> BI -> Orchestrator -> SQLite and dashboard
+
+Start the API from backend/ and use Collect and investigate on the dashboard, or call the API directly. Reading the Security log requires Administrator rights: double-click run_backend_admin.bat in the repository root, which requests elevation and serves the dashboard at http://127.0.0.1:8000/app/. Without elevation, System and Application are still collected and the response lists the Security error. Repeats are grouped into one incident per host, event, and user, and the alert shows the occurrence count and first and last seen times. Repeats in later scans update the open incident; once an incident has been acted on, a repeat opens a new one. Each incident stores its newest 50 events as evidence while the count stays exact. Events that were already processed are skipped, so lookback windows can overlap. Severity comes from Windows and threat-intel evidence; the Random Forest probability only adjusts the anomaly score. Threat intel is read from Sentinel_Agent/intel_cache and is never downloaded during a request.
+
+Event_Gatherer/gatherer.py and Sentinel_Agent/anomaly_agent.py still work as standalone command-line tools.
+
+Analyst triage
+
+Sentinel incident -> analyst.py rule for the event (by log name and event ID) -> correlation with other activity on the host -> verdict, priority, and next steps -> Prognostic
+
+The Analyst decides what each Sentinel incident actually is. It reads the Windows message fields (accounts, logon type, source address, command line, service path, group name) and gives a verdict: malicious, suspicious, or benign. It also assigns a priority from P1 to P4, a decision (escalate, investigate, or close), the ATT&CK techniques the evidence supports, and recommended next steps. The triage score is the sum of the listed findings, so every verdict can be traced to evidence. Rules cover failed and successful logons, privileged logons, log clearing, account creation, privileged group changes, service installs, scheduled tasks, process command lines (encoded PowerShell is decoded and scored), group enumeration, clock changes, Defender detections, and scanner malware hits. Other channels with no security indicators are classed as operational noise. Benign incidents are capped at a low score, so they forecast low and get the monitor playbook.
+
+During ingest, each incident is correlated with the rest of the same collection and with recent incidents on the host. Related incidents are linked by ID: failed logons followed by a success from the same source, a new account added to Administrators, or a log cleared after other suspicious activity. The dashboard shows the verdict on each row and hides benign incidents by default (verdict filter), and the incident drawer shows the score breakdown, linked incidents, and next steps.
+
+Claude review (hybrid triage)
+
+Rules triage every incident -> unresolved ones (suspicious, no matching rule, or low confidence) -> Claude investigates with read-only tools -> merged verdict -> Prognostic, BI, Orchestrator re-run
+
+Claude reviews only what the rules cannot settle. It investigates with read-only tools: the incident's own events, other activity on the same host, linked incidents, PowerShell decoding, and IP reputation. It returns a verdict, its reasoning, the evidence it cited, and next steps. The dashboard shows each review in the incident drawer, including the tool calls Claude made, and the drawer has an "Ask Claude to review" button for any incident.
+
+Guardrails are enforced in code, not left to the model. Claude can raise a verdict, or decide one where no rule applies, but it never lowers a verdict a rule reached: log text is partly attacker-controlled. A disagreement is flagged "needs human decision" instead. Reviews run in a background worker, so ingest and live detection never wait on the API. Repeats of a reviewed incident reuse its review, and an hourly cap limits spend. If the API refuses or fails, the rule verdict stands.
+
+Claude review is off by default because it sends incident evidence (log messages, usernames, hostnames, IPs) to the Claude API. To turn it on, install requirements.txt, set ANTHROPIC_API_KEY, and start the backend with:
+
+SOC_LLM_TRIAGE=auto — review unresolved incidents (all reviews every incident; off is the default)
+
+SOC_LLM_MODEL=claude-opus-5-5, SOC_LLM_EFFORT=medium, SOC_LLM_MAX_REVIEWS_PER_HOUR=30 — optional
+
+GET /llm/status reports the mode, queue, and outcomes; POST /incidents/{incident_id}/review asks for a review of one incident.
+
+Malware scanning
+
+Process-creation events (Security 4688, Sysmon 1) -> file_scan.py -> Sentinel_Agent/malware_classifier (LightGBM) -> malware_detected incident
+
+During an ingest, the executables named in process-creation events are read (never executed) and scored by a LightGBM detector trained on the EMBER2024 Windows PE dataset. Files above the 1% false-positive threshold are "suspicious" (high severity) and above the 0.1% threshold "malicious" (critical). Flagged files are also classified into one of the 100 most common malware families (or "other"), and the family's typical MITRE ATT&CK techniques and tactics are attached for the Analyst and Prognostic agents. One incident is opened per host and file hash. Process-creation auditing (event 4688) must be enabled in Windows for this to see launches. If the models are not installed, ingest continues without malware scanning.
+
+Dev mode (testing and demos)
+
+Start the backend with run_backend_dev.bat (or set SOC_DEV_MODE=1) to show a Test scenarios panel on the dashboard. It injects synthetic Windows attack scenarios (brute force, log cleared, new admin account, service install, encoded PowerShell) through the full pipeline, with fresh record IDs each run, so nothing happens on the machine itself. A malware launch demo scores stored EMBER2024 test-set feature vectors (models/demo_vectors.npz, built by build_demo_vectors.py) with the real models, so no malware file is needed. Two resets are available: forget processed events (the next collection re-reports log records already seen) and wipe all incidents. Without dev mode the /dev endpoints are not registered. Never enable dev mode outside testing.
+
+The models are not in git. To rebuild them (about 25 GB download, 105 GB extracted data, several hours of compute), install Sentinel_Agent/malware_classifier/requirements.txt and run, from the repository root: download_ember2024.py, build_features.py, train_detector.py, train_family.py, then build_family_profiles.py (all in Sentinel_Agent/malware_classifier). Test metrics are written to models/detector_metrics.json and models/family_metrics.json.
+
 Run locally
 
-The core workflow uses only the Python standard library:
+Run these commands from backend/. The core workflow uses only the Python standard library:
 
 python agents.py
 python -m unittest discover -s tests -v
@@ -53,51 +105,21 @@ GET /health
 
 POST /events
 
+POST /ingest/windows — collect from this host, detect anomalies, and open incidents
+
+POST /ingest/document — do the same for a saved gatherer JSON export
+
 GET /incidents
 
 GET /incidents/{incident_id}
 
-POST /incidents/{incident_id}/decision
+POST /live/start, POST /live/stop, GET /live/status — live detection: poll this host's Event Viewer every 30 seconds and ingest new events (the "Start live detection" button on the dashboard)
 
-Human approval and denial
+GET /scan/status — whether the malware scanner and its models are loaded
 
-Click an incident marked **Approval Required** to open its details. Review the proposed playbook and targets, enter a reviewer name and reason, then choose **Approve response** or **Deny response**.
+POST /scan/path — scan a file on the server, e.g. {"path": "C:\\Users\\bob\\Downloads\\setup.exe"}
 
-- Approve resumes the stored playbook and changes the status to `executed` after the simulated response completes.
-- Deny changes the status to `denied` without executing response actions.
-- Both decisions store the reviewer, reason, decision timestamp, and an audit entry in SQLite. The details panel displays the recorded decision after refresh or a backend restart.
-- Only pending incidents accept decisions. Repeated or conflicting requests return HTTP 409. Decisions are serialized in a SQLite transaction, and repeated ingestion of the same incident preserves the saved decision.
-
-The API accepts JSON such as:
-
-```json
-{"decision": "approve", "reviewer": "Analyst One", "reason": "Reviewed the evidence and proposed targets"}
-```
-
-This is a local demo: the reviewer name is self-reported, and EDR/IAM responses are simulated. Before using real response adapters, bind reviewer identity to authenticated analyst roles and make response execution durable and idempotent across failures. A database transaction alone cannot roll back an external endpoint or account change.
-
-Windows Security log scans
-
-From the repository root, install dependencies and start the dashboard:
-
-```powershell
-cd backend
-python -m pip install -r requirements.txt
-python -m uvicorn api:app --reload
-```
-
-Run the backend on your Windows computer. Open http://127.0.0.1:8000/app/ and click **Read Security events**.
-
-The data flow is `gatherer.py -> SentinelAgent.inspect_computer -> anomaly.py -> existing incident pipeline -> POST /scan JSON -> frontend/app.js`.
-
-- `gatherer.py` reads the same **Windows Logs > Security** channel shown in Event Viewer, using built-in Windows PowerShell `Get-WinEvent`. It reads the newest 200 records, parses their XML fields, and reports when that limit excludes older records. No extra collector dependency is needed. Collection happens on the backend host, which may differ from the computer viewing the dashboard.
-- `anomaly.py` selects events through `SECURITY_RULES`: **4625** (failed logon), **4740** (account lockout), **4719** (audit policy change), and **1102** (Security log cleared). These are review rules, not a learned behavioral baseline or proof of an attack. Successful logons and other unmatched events remain visible in the records read without creating incidents.
-- `POST /scan` returns `{ "snapshot": { "events": [...], ... }, "anomalies": [...], "incident": {...} }`. Without rule matches, `anomalies` is empty and `incident` is null. Findings preserve Windows event IDs, record IDs, timestamps, user/IP fields where present, and original named event data. Stable event identities let an identical set of findings reuse its incident ID; changing scan windows can produce incidents with overlapping evidence.
-- `frontend/app.js` calls `/scan` with `fetch`, displays findings and expandable Security records, and refreshes `/incidents` when an incident is created. Python data reaches JavaScript through the API; it is not written into JavaScript source files.
-
-Scans run only when requested. If access is denied (HTTP 403), start the backend from **PowerShell run as Administrator**, or use an account with Security log read permissions. The collector does not change audit policy or clear logs. An empty result means no matching records; permission and service errors are reported separately. Which events Windows records depends on the computer's audit policy. `memory.py` does not need to change; matched incidents already persist in SQLite.
-
-Reference: [Microsoft Get-WinEvent documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent?view=powershell-5.1).
+POST /scan/upload?filename=setup.exe — scan a file sent as the raw request body (application/octet-stream)
 
 Safety and governance
 

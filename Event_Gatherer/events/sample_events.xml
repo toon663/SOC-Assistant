@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EventCollection schemaVersion="1">
+  <Metadata>
+    <collectedAtUtc>2026-10-18T22:43:25.914232+00:00</collectedAtUtc>
+    <computerName>DatabaseII</computerName>
+    <lookbackHours>1</lookbackHours>
+    <maxEventsPerLog>2</maxEventsPerLog>
+    <eventCount>2</eventCount>
+    <format>xml</format>
+    <logs>
+      <log>Application</log>
+    </logs>
+  </Metadata>
+  <Events>
+    <Event>
+      <recordId>5585</recordId>
+      <timeCreatedUtc>2026-10-18T22:40:57.3126131Z</timeCreatedUtc>
+      <eventId>16384</eventId>
+      <provider>Microsoft-Windows-Security-SPP</provider>
+      <level>4</level>
+      <levelName>Information</levelName>
+      <keywords>
+        <keyword>Classic</keyword>
+      </keywords>
+      <logName>Application</logName>
+      <machineName>DatabaseII</machineName>
+      <userId/>
+      <processId>23040</processId>
+      <threadId>0</threadId>
+      <task/>
+      <opcode/>
+      <activityId/>
+      <message>Successfully scheduled Software Protection service for re-start at 2126-09-24T22:40:57Z. Reason: RulesEngine.</message>
+      <eventData>
+        <data index="0">2126-09-24T22:40:57Z</data>
+        <data index="1">RulesEngine</data>
+      </eventData>
+    </Event>
+    <Event>
+      <recordId>5586</recordId>
+      <timeCreatedUtc>2026-10-18T22:42:00.7345308Z</timeCreatedUtc>
+      <eventId>467</eventId>
+      <provider>ESENT</provider>
+      <level>2</level>
+      <levelName>Error</levelName>
+      <keywords>
+        <keyword>Classic</keyword>
+      </keywords>
+      <logName>Application</logName>
+      <machineName>DatabaseII</machineName>
+      <userId/>
+      <processId>6620</processId>
+      <threadId>0</threadId>
+      <task>Database Corruption</task>
+      <opcode>Info</opcode>
+      <activityId/>
+      <message>svchost (6620,D,23,0) SRUJet: Database C:\WINDOWS\system32\SRU\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0).</message>
+      <eventData>
+        <data index="0">svchost</data>
+        <data index="1">6620,D,23,0</data>
+        <data index="2">SRUJet: </data>
+        <data index="3">UserIdTimeStamp</data>
+        <data index="4">{5C8CF1C7-7257-4F13-B223-970EF5939312}</data>
+        <data index="5">C:\WINDOWS\system32\SRU\SRUDB.dat</data>
+        <data index="6">0</data>
+      </eventData>
+    </Event>
+  </Events>
+  <Errors/>
+</EventCollection>

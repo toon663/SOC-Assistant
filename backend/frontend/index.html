@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SOC Assistant | Security Operations Dashboard</title>
-    <link rel="stylesheet" href="/app/styles.css" />
+    <link rel="stylesheet" href="/app/styles.css?v=9" />
   </head>
   <body>
     <div class="shell">
@@ -20,7 +20,12 @@
         <nav class="nav" aria-label="Main navigation">
           <a class="nav-link active" href="#overview"><span>▦</span> Overview</a>
           <a class="nav-link" href="#incidents"><span>◉</span> Incidents</a>
+          <a class="nav-link" href="#collect"><span>⇣</span> Collect events</a>
+          <a class="nav-link" href="#scan"><span>⌕</span> Scan a file</a>
+          <a class="nav-link" id="dev-nav" href="#dev" hidden><span>⚙</span> Test scenarios</a>
+          <!-- Manual event submission is disabled for now.
           <a class="nav-link" href="#submit"><span>＋</span> Submit event</a>
+          -->
           <a class="nav-link" href="/docs" target="_blank" rel="noreferrer"><span>↗</span> API docs</a>
         </nav>
 
@@ -48,6 +53,75 @@
           </div>
         </header>
 
+        <section id="collect" class="panel collect-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">WINDOWS EVENT VIEWER</p>
+              <h2>Collect and scan this host</h2>
+            </div>
+            <span class="agent-badge">Gatherer → Random Forest + LightGBM</span>
+          </div>
+          <form id="collect-form" class="collect-form">
+            <label>Lookback (hours)<input name="hours" type="number" min="1" max="720" value="24" required /></label>
+            <label>Max events per log<input name="max_events_per_log" type="number" min="1" max="5000" value="500" required /></label>
+            <button class="primary-button" type="submit"><span>Collect and investigate</span><span>→</span></button>
+          </form>
+          <div id="collect-message" class="form-message" role="status"></div>
+          <div class="live-row">
+            <button class="live-button" type="button" id="live-toggle">Start live detection</button>
+            <div id="live-status" class="live-status" role="status">Live detection is off. When on, this host is checked for new events every 30 seconds.</div>
+          </div>
+        </section>
+
+        <section id="scan" class="panel scan-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">STATIC MALWARE ANALYSIS</p>
+              <h2>Scan a file</h2>
+            </div>
+            <span class="agent-badge" id="scan-badge">Sentinel → LightGBM</span>
+          </div>
+          <form id="scan-form" class="collect-form">
+            <label>Windows executable (.exe, .dll, up to 128 MB)<input name="file" type="file" required /></label>
+            <label>Host it came from<input name="host" value="uploaded-sample" maxlength="255" required /></label>
+            <button class="primary-button" type="submit"><span>Scan file</span><span>→</span></button>
+          </form>
+          <p class="scan-note">The file is parsed for features only and is never executed. Malicious and suspicious files open an incident.</p>
+          <div id="scan-message" class="form-message" role="status"></div>
+          <div id="scan-result" class="scan-result" hidden></div>
+        </section>
+
+        <section id="dev" class="panel dev-panel" hidden>
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">DEV MODE · TEST DATA</p>
+              <h2>Test scenarios</h2>
+            </div>
+            <span class="agent-badge dev-badge">Synthetic, not real activity</span>
+          </div>
+          <div class="dev-grid">
+            <div>
+              <span class="detail-label">Attack scenarios</span>
+              <div id="dev-scenarios" class="dev-buttons"></div>
+            </div>
+            <div>
+              <span class="detail-label">Malware launch (EMBER2024 test sample, no file)</span>
+              <div class="dev-row">
+                <select id="dev-malware-sample" aria-label="Malware demo sample"></select>
+                <button class="dev-button" type="button" id="dev-malware-run">Run</button>
+              </div>
+            </div>
+            <div>
+              <span class="detail-label">Reset</span>
+              <div class="dev-buttons">
+                <button class="dev-button" type="button" id="dev-reset-events" title="The next collection treats already-seen log records as new">Forget processed events</button>
+                <button class="dev-button danger" type="button" id="dev-reset-all">Wipe all incidents</button>
+              </div>
+            </div>
+          </div>
+          <div id="dev-message" class="form-message" role="status"></div>
+        </section>
+
         <section id="overview" class="page-section">
           <div class="metric-grid">
             <article class="metric-card accent-blue">
@@ -73,20 +147,7 @@
           </div>
         </section>
 
-        <section class="panel page-section" aria-labelledby="scan-heading">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">WINDOWS EVENT VIEWER</p>
-              <h2 id="scan-heading">Windows Logs &gt; Security</h2>
-              <p>Read the newest 200 Security events on the Windows computer running this API.</p>
-            </div>
-            <button class="primary-button" id="scan-button" type="button">Read Security events</button>
-          </div>
-          <div id="scan-message" class="form-message" role="status">Read Security events on demand and check Sentinel rules.</div>
-          <div id="scan-results" class="drawer-content"></div>
-        </section>
-
-        <div class="content-grid">
+        <div class="content-grid single">
           <section id="incidents" class="panel incidents-panel">
             <div class="panel-heading">
               <div>
@@ -95,20 +156,32 @@
               </div>
             </div>
             <div class="incident-tools">
+              <details class="severity-dropdown" id="severity-dropdown">
+                <summary><span id="severity-summary">All severities</span><span aria-hidden="true">▾</span></summary>
+                <fieldset class="severity-menu" id="severity-filter">
+                  <legend class="visually-hidden">Filter by severity</legend>
+                  <label class="check critical"><input type="checkbox" value="critical" checked /> Critical</label>
+                  <label class="check high"><input type="checkbox" value="high" checked /> High</label>
+                  <label class="check medium"><input type="checkbox" value="medium" checked /> Medium</label>
+                  <label class="check low"><input type="checkbox" value="low" checked /> Low</label>
+                </fieldset>
+              </details>
               <input id="incident-search" class="search-input" type="search" placeholder="Search incidents" aria-label="Search incidents" />
-              <select id="severity-filter" aria-label="Filter by severity">
-              <option value="">All severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-              </select>
               <select id="status-filter" aria-label="Filter by status">
+              <option value="active" selected>Active (unresolved)</option>
               <option value="">All statuses</option>
               <option value="approval_required">Pending approval</option>
               <option value="executed">Executed</option>
               <option value="denied">Denied by reviewer</option>
               <option value="blocked_by_policy">Blocked</option>
+              <option value="resolved">Resolved</option>
+              </select>
+              <select id="verdict-filter" aria-label="Filter by analyst verdict">
+              <option value="">All verdicts</option>
+              <option value="actionable" selected>Malicious + suspicious</option>
+              <option value="malicious">Malicious</option>
+              <option value="suspicious">Suspicious</option>
+              <option value="benign">Benign</option>
               </select>
               <button class="text-button" id="refresh-incidents">Refresh ↻</button>
             </div>
@@ -117,6 +190,8 @@
             </div>
           </section>
 
+          <!-- Manual event submission is disabled for now; re-enable together with the
+               event-form listener in app.js.
           <section id="submit" class="panel submit-panel">
             <div class="panel-heading">
               <div>
@@ -151,6 +226,7 @@
               <div id="form-message" class="form-message" role="status"></div>
             </form>
           </section>
+          -->
         </div>
 
         <section class="panel workflow-panel">
@@ -185,6 +261,6 @@
         </aside>
       </main>
     </div>
-    <script src="/app/app.js"></script>
+    <script src="/app/app.js?v=9"></script>
   </body>
 </html>

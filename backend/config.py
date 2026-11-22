@@ -23,6 +23,14 @@ class Settings:
     log_level: str = "INFO"
     memory_limit: int = 1000
     retrieval_top_k: int = 5
+    # Enables /dev endpoints (synthetic scenarios, malware demo, resets). Never enable in production.
+    dev_mode: bool = False
+    # Claude review of incidents the triage rules leave unresolved: off, auto, or all.
+    # Sends incident evidence (log messages, usernames, hosts, IPs) to the Claude API.
+    llm_triage: str = "off"
+    llm_model: str = "claude-opus-5-5"
+    llm_effort: str = "medium"
+    llm_max_reviews_per_hour: int = 30
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -35,6 +43,11 @@ class Settings:
             log_level=os.getenv("SOC_LOG_LEVEL", "INFO"),
             memory_limit=int(os.getenv("SOC_MEMORY_LIMIT", "1000")),
             retrieval_top_k=int(os.getenv("SOC_RETRIEVAL_TOP_K", "5")),
+            dev_mode=_bool("SOC_DEV_MODE", False),
+            llm_triage=os.getenv("SOC_LLM_TRIAGE", cls.llm_triage).strip().lower(),
+            llm_model=os.getenv("SOC_LLM_MODEL", cls.llm_model),
+            llm_effort=os.getenv("SOC_LLM_EFFORT", cls.llm_effort),
+            llm_max_reviews_per_hour=int(os.getenv("SOC_LLM_MAX_REVIEWS_PER_HOUR", "30")),
         )
 
 

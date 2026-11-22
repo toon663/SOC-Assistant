@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "collectedAtUtc": "2026-10-18T22:46:17.971007+00:00",
+  "computerName": "DatabaseII",
+  "lookbackHours": 1,
+  "maxEventsPerLog": 3,
+  "logs": [
+    "Application"
+  ],
+  "format": "json",
+  "eventCount": 3,
+  "events": [
+    {
+      "recordId": 5584,
+      "timeCreatedUtc": "2026-10-18T22:40:26.9853076Z",
+      "eventId": 16394,
+      "provider": "Microsoft-Windows-Security-SPP",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 23040,
+      "threadId": 0,
+      "task": null,
+      "opcode": null,
+      "activityId": null,
+      "message": "Offline downlevel migration succeeded.",
+      "eventData": []
+    },
+    {
+      "recordId": 5585,
+      "timeCreatedUtc": "2026-10-18T22:40:57.3126131Z",
+      "eventId": 16384,
+      "provider": "Microsoft-Windows-Security-SPP",
+      "level": 4,
+      "levelName": "Information",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 23040,
+      "threadId": 0,
+      "task": null,
+      "opcode": null,
+      "activityId": null,
+      "message": "Successfully scheduled Software Protection service for re-start at 2126-09-24T22:40:57Z. Reason: RulesEngine.",
+      "eventData": [
+        "2126-09-24T22:40:57Z",
+        "RulesEngine"
+      ]
+    },
+    {
+      "recordId": 5586,
+      "timeCreatedUtc": "2026-10-18T22:42:00.7345308Z",
+      "eventId": 467,
+      "provider": "ESENT",
+      "level": 2,
+      "levelName": "Error",
+      "keywords": [
+        "Classic"
+      ],
+      "logName": "Application",
+      "machineName": "DatabaseII",
+      "userId": null,
+      "processId": 6620,
+      "threadId": 0,
+      "task": "Database Corruption",
+      "opcode": "Info",
+      "activityId": null,
+      "message": "svchost (6620,D,23,0) SRUJet: Database C:\\WINDOWS\\system32\\SRU\\SRUDB.dat: Index UserIdTimeStamp of table {5C8CF1C7-7257-4F13-B223-970EF5939312} is corrupted (0).",
+      "eventData": [
+        "svchost",
+        "6620,D,23,0",
+        "SRUJet: ",
+        "UserIdTimeStamp",
+        "{5C8CF1C7-7257-4F13-B223-970EF5939312}",
+        "C:\\WINDOWS\\system32\\SRU\\SRUDB.dat",
+        "0"
+      ]
+    }
+  ],
+  "errors": []
+}
