@@ -12,6 +12,7 @@ from typing import Any, Optional
 from agents import SecurityEvent, SecurityOperationsPipeline, Severity, incident_from_dict, incident_to_dict, utc_now
 from config import settings
 from database import IncidentRepository
+from explain import annotate, warm_up
 from file_scan import ScanUnavailable
 from integrations import IntegrationHub
 from live_detection import LiveDetector
@@ -52,6 +53,7 @@ def create_app():
         raise RuntimeError("FastAPI is not installed; run: pip install -r requirements.txt")
 
     app = FastAPI(title=settings.app_name)
+    warm_up()
 
     @app.get("/")
     def root():
@@ -101,7 +103,7 @@ def create_app():
         incident.risk_analysis["claude_review"] = {"status": "pending", "queued_at": utc_now(), "requested": True}
         repository.save_incident(incident)
         reviews.enqueue(incident_id)
-        return incident_to_dict(incident)
+        return annotate(incident_to_dict(incident))
 
     @app.get("/live/status")
     def live_status() -> dict[str, Any]:
@@ -262,20 +264,20 @@ def create_app():
             repository.save_incident(incident)
             if queued:
                 reviews.enqueue(incident.incident_id)
-            return incident_to_dict(incident)
+            return annotate(incident_to_dict(incident))
         except (KeyError, ValueError, TypeError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/incidents")
     def list_incidents(limit: int = 100) -> list[dict[str, Any]]:
-        return repository.list_incidents(max(1, min(limit, 500)))
+        return [annotate(item) for item in repository.list_incidents(max(1, min(limit, 500)))]
 
     @app.get("/incidents/{incident_id}")
     def get_incident(incident_id: str) -> dict[str, Any]:
         incident = repository.get_incident(incident_id)
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
-        return incident
+        return annotate(incident)
 
     @app.post("/incidents/{incident_id}/resolve")
     def resolve_incident(incident_id: str, request: Optional[ResolveRequest] = None) -> dict[str, Any]:
@@ -284,7 +286,7 @@ def create_app():
         incident = repository.resolve_incident(incident_id, resolved_at=utc_now(), note=note)
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
-        return incident
+        return annotate(incident)
 
 
 

@@ -740,7 +740,7 @@ def triage_operational(ctx: TriageContext) -> Outcome:
     ctx.action(f"If this repeats, tell the Sentinel to ignore {provider} event {event_id} so it stops opening incidents")
     return Outcome(
         BENIGN, "operational", f"An operational {level.lower()} from {provider}, not security activity.", 0.7,
-        f"This is a {level.lower()} from {provider} in the {event.metadata.get('log_name') or 'unknown'} log, not a security audit event, "
+        f"This is {'an' if level.lower()[:1] in 'aeiou' else 'a'} {level.lower()} from {provider} in the {event.metadata.get('log_name') or 'unknown'} log, not a security audit event, "
         "and it mentions no known exploited vulnerability. Messages like this are usually software faults or status updates. "
         "The Sentinel flagged it because it is unusual for this host, not because it shows attack activity.",
     )
