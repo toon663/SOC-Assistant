@@ -15,6 +15,10 @@ Modules
 
 agents.py — end-to-end Sentinel, Analyst, Prognostic, BI, and Orchestrator workflow
 
+analyst.py — Analyst agent triage rules: verdict, priority, correlation, and next steps
+
+llm_analyst.py — Claude review of incidents the rules leave unresolved (optional)
+
 models.py — validated boundary models
 
 ml_models.py — local baselines for anomaly scoring, triage, deduplication, and forecasting
@@ -46,6 +50,30 @@ Event_Gatherer -> Sentinel_Agent Random Forest -> windows_ingest.py -> Sentinel 
 Start the API from backend/ and use Collect and investigate on the dashboard, or call the API directly. Reading the Security log requires Administrator rights: double-click run_backend_admin.bat in the repository root, which requests elevation and serves the dashboard at http://127.0.0.1:8000/app/. Without elevation, System and Application are still collected and the response lists the Security error. Repeats are grouped into one incident per host, event, and user, and the alert shows the occurrence count and first and last seen times. Repeats in later scans update the open incident; once an incident has been acted on, a repeat opens a new one. Each incident stores its newest 50 events as evidence while the count stays exact. Events that were already processed are skipped, so lookback windows can overlap. Severity comes from Windows and threat-intel evidence; the Random Forest probability only adjusts the anomaly score. Threat intel is read from Sentinel_Agent/intel_cache and is never downloaded during a request.
 
 Event_Gatherer/gatherer.py and Sentinel_Agent/anomaly_agent.py still work as standalone command-line tools.
+
+Analyst triage
+
+Sentinel incident -> analyst.py rule for the event (by log name and event ID) -> correlation with other activity on the host -> verdict, priority, and next steps -> Prognostic
+
+The Analyst decides what each Sentinel incident actually is. It reads the Windows message fields (accounts, logon type, source address, command line, service path, group name) and gives a verdict: malicious, suspicious, or benign. It also assigns a priority from P1 to P4, a decision (escalate, investigate, or close), the ATT&CK techniques the evidence supports, and recommended next steps. The triage score is the sum of the listed findings, so every verdict can be traced to evidence. Rules cover failed and successful logons, privileged logons, log clearing, account creation, privileged group changes, service installs, scheduled tasks, process command lines (encoded PowerShell is decoded and scored), group enumeration, clock changes, Defender detections, and scanner malware hits. Other channels with no security indicators are classed as operational noise. Benign incidents are capped at a low score, so they forecast low and get the monitor playbook.
+
+During ingest, each incident is correlated with the rest of the same collection and with recent incidents on the host. Related incidents are linked by ID: failed logons followed by a success from the same source, a new account added to Administrators, or a log cleared after other suspicious activity. The dashboard shows the verdict on each row and hides benign incidents by default (verdict filter), and the incident drawer shows the score breakdown, linked incidents, and next steps.
+
+Claude review (hybrid triage)
+
+Rules triage every incident -> unresolved ones (suspicious, no matching rule, or low confidence) -> Claude investigates with read-only tools -> merged verdict -> Prognostic, BI, Orchestrator re-run
+
+Claude reviews only what the rules cannot settle. It investigates with read-only tools: the incident's own events, other activity on the same host, linked incidents, PowerShell decoding, and IP reputation. It returns a verdict, its reasoning, the evidence it cited, and next steps. The dashboard shows each review in the incident drawer, including the tool calls Claude made, and the drawer has an "Ask Claude to review" button for any incident.
+
+Guardrails are enforced in code, not left to the model. Claude can raise a verdict, or decide one where no rule applies, but it never lowers a verdict a rule reached: log text is partly attacker-controlled. A disagreement is flagged "needs human decision" instead. Reviews run in a background worker, so ingest and live detection never wait on the API. Repeats of a reviewed incident reuse its review, and an hourly cap limits spend. If the API refuses or fails, the rule verdict stands.
+
+Claude review is off by default because it sends incident evidence (log messages, usernames, hostnames, IPs) to the Claude API. To turn it on, install requirements.txt, set ANTHROPIC_API_KEY, and start the backend with:
+
+SOC_LLM_TRIAGE=auto — review unresolved incidents (all reviews every incident; off is the default)
+
+SOC_LLM_MODEL=claude-opus-5-5, SOC_LLM_EFFORT=medium, SOC_LLM_MAX_REVIEWS_PER_HOUR=30 — optional
+
+GET /llm/status reports the mode, queue, and outcomes; POST /incidents/{incident_id}/review asks for a review of one incident.
 
 Malware scanning
 

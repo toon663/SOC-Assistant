@@ -15,7 +15,7 @@ real SIEM, EDR, identity, threat-intelligence, and ticketing integrations.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Protocol
@@ -24,6 +24,8 @@ import ipaddress
 import json
 import math
 import re
+
+from analyst import RelatedEvent, triage
 
 
 def utc_now() -> str:
@@ -247,35 +249,44 @@ class SentinelAgent:
 
 
 class AnalystAgent:
-    """Enrich events with asset context and triage correlated risk."""
+    """Triage a Sentinel incident: verdict, priority, evidence, and next steps.
+
+    The rules live in analyst.py. ``related`` is other activity on the same host
+    (other incidents, other events from the same collection) used for correlation.
+    """
 
     name = "analyst"
 
     def __init__(self, systems: ExternalSystems):
         self.systems = systems
 
-    def analyze(self, incident: Incident) -> Incident:
+    def analyze(self, incident: Incident, related: Iterable[RelatedEvent] = ()) -> Incident:
         primary = incident.events[0]
         incident.asset_context = self.systems.lookup_asset(primary.user, primary.host)
+        incident.record(self.name, "request_asset_context", context=incident.asset_context)
 
         unique_keys = {
             (event.user, event.host, event.event_type, event.source_ip)
             for event in incident.events
         }
-        duplicate_count = len(incident.events) - len(unique_keys)
-        impact_modifier = 15 if incident.asset_context.get("criticality") == "high" else 0
-        risk_score = min(
-            100.0,
-            incident.anomaly_score + impact_modifier + min(10, duplicate_count * 2),
+        analysis = triage(incident, related, incident.asset_context)
+        analysis["correlated_events"] = len(unique_keys)
+        analysis["duplicates_removed"] = len(incident.events) - len(unique_keys)
+        analysis["triaged_at"] = utc_now()
+        incident.risk_analysis = analysis
+        incident.record(
+            self.name,
+            "correlate_and_deduplicate",
+            correlations=len(analysis["correlations"]),
+            duplicates_removed=analysis["duplicates_removed"],
         )
-        incident.risk_analysis = {
-            "risk_score": round(risk_score, 2),
-            "correlated_events": len(unique_keys),
-            "duplicates_removed": duplicate_count,
-            "triage": "urgent" if risk_score >= 70 else "standard",
-        }
-        incident.record(self.name, "request_asset_context", context=incident.asset_context)
-        incident.record(self.name, "analyze_risk_impact", analysis=incident.risk_analysis)
+        incident.record(
+            self.name,
+            "analyze_risk_impact",
+            verdict=analysis["verdict"],
+            priority=analysis["priority"],
+            risk_score=analysis["risk_score"],
+        )
         return incident
 
 
@@ -426,16 +437,28 @@ class SecurityOperationsPipeline:
         events: Iterable[SecurityEvent],
         approved: bool = False,
         continues: Optional[Dict[str, Any]] = None,
+        related: Iterable[RelatedEvent] = (),
+        occurrences: Optional[int] = None,
     ) -> Incident:
-        """Run the workflow; ``continues`` is a stored incident to re-assess in place."""
+        """Run the workflow; ``continues`` is a stored incident to re-assess in place.
+
+        ``related`` is other activity on the host that the Analyst correlates with.
+        ``occurrences`` is the exact repeat count when ``events`` is capped evidence.
+        """
         incident = self.sentinel.detect_anomaly(events)
+        if occurrences:
+            incident.alert["occurrence_count"] = occurrences
         if continues:
             incident.incident_id = continues["incident_id"]
             incident.detected_at = continues["detected_at"]
             incident.alert["fingerprint"] = continues["incident_id"]
             incident.alert["ticket_id"] = continues.get("alert", {}).get("ticket_id")
             incident.audit_log = continues.get("audit_log", []) + incident.audit_log
-        self.analyst.analyze(incident)
+        self.analyst.analyze(incident, related)
+        return self.reassess(incident, approved=approved)
+
+    def reassess(self, incident: Incident, approved: bool = False) -> Incident:
+        """Run the agents after the Analyst, e.g. after a Claude review changed the triage."""
         self.prognostic.forecast_risk(incident)
         self.bi.assess(incident)
         self.orchestrator.create_risk_report(incident)
@@ -451,6 +474,13 @@ def incident_to_dict(incident: Incident) -> Dict[str, Any]:
     for event in result["events"]:
         event["severity"] = event["severity"].value
     return result
+
+
+def incident_from_dict(data: Dict[str, Any]) -> Incident:
+    """Rebuild an Incident from ``incident_to_dict`` output (e.g. a stored payload)."""
+    names = {item.name for item in fields(Incident)}
+    events = [SecurityEvent(**{**event, "severity": Severity(event["severity"])}) for event in data["events"]]
+    return Incident(**{**{key: value for key, value in data.items() if key in names}, "events": events})
 
 
 def demo() -> None:

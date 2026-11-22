@@ -175,6 +175,13 @@
               <option value="blocked_by_policy">Blocked</option>
               <option value="resolved">Resolved</option>
               </select>
+              <select id="verdict-filter" aria-label="Filter by analyst verdict">
+              <option value="">All verdicts</option>
+              <option value="actionable" selected>Malicious + suspicious</option>
+              <option value="malicious">Malicious</option>
+              <option value="suspicious">Suspicious</option>
+              <option value="benign">Benign</option>
+              </select>
               <button class="text-button" id="refresh-incidents">Refresh ↻</button>
             </div>
             <div id="incident-list" class="incident-list">

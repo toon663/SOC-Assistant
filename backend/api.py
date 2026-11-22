@@ -7,14 +7,15 @@ from fastapi.staticfiles import StaticFiles
 
 
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Optional
 
-from agents import SecurityEvent, SecurityOperationsPipeline, Severity, incident_to_dict, utc_now
+from agents import SecurityEvent, SecurityOperationsPipeline, Severity, incident_from_dict, incident_to_dict, utc_now
 from config import settings
 from database import IncidentRepository
 from file_scan import ScanUnavailable
 from integrations import IntegrationHub
 from live_detection import LiveDetector
+from llm_analyst import ClaudeAnalyst, ReviewWorker
 from windows_ingest import DEFAULT_THRESHOLD, IngestUnavailable, WindowsIngestService
 
 try:
@@ -35,6 +36,10 @@ class WindowsCollectionRequest(BaseModel):
     hours: int = Field(default=24, ge=1, le=720)
     max_events_per_log: int = Field(default=500, ge=1, le=5000)
     threshold: float = Field(default=DEFAULT_THRESHOLD, gt=0, le=1)
+
+
+class ResolveRequest(BaseModel):
+    note: str = Field(default="", max_length=4000)
 
 
 class ScanPathRequest(BaseModel):
@@ -63,6 +68,40 @@ def create_app():
     pipeline = SecurityOperationsPipeline(systems=systems, require_approval=settings.require_human_approval)
     windows_ingest = WindowsIngestService(pipeline, repository)
     live = LiveDetector(windows_ingest)
+    reviews = None
+    if settings.llm_triage != "off":
+        analyst = ClaudeAnalyst(
+            model=settings.llm_model,
+            effort=settings.llm_effort,
+            ip_reputation=systems.lookup_ip_reputation,
+            get_incident=repository.get_incident,
+        )
+        reviews = ReviewWorker(
+            analyst, repository, pipeline, windows_ingest.related_activity,
+            mode=settings.llm_triage, max_per_hour=settings.llm_max_reviews_per_hour,
+        )
+        windows_ingest.reviews = reviews
+
+    @app.get("/llm/status")
+    def llm_status() -> dict[str, Any]:
+        """Whether Claude review is on, and its queue and outcome counts."""
+        return reviews.status() if reviews else {"mode": "off"}
+
+    @app.post("/incidents/{incident_id}/review")
+    def request_review(incident_id: str) -> dict[str, Any]:
+        """Ask Claude to review one incident now, whatever the rules decided."""
+        if reviews is None:
+            raise HTTPException(status_code=409, detail="Claude review is off; start the backend with SOC_LLM_TRIAGE=auto")
+        stored = repository.get_incident(incident_id)
+        if stored is None:
+            raise HTTPException(status_code=404, detail="incident not found")
+        incident = incident_from_dict(stored)
+        # Fresh rule triage, so the new review is not merged on top of an earlier one.
+        pipeline.analyst.analyze(incident, windows_ingest.related_activity(incident))
+        incident.risk_analysis["claude_review"] = {"status": "pending", "queued_at": utc_now(), "requested": True}
+        repository.save_incident(incident)
+        reviews.enqueue(incident_id)
+        return incident_to_dict(incident)
 
     @app.get("/live/status")
     def live_status() -> dict[str, Any]:
@@ -219,7 +258,10 @@ def create_app():
                 for item in raw_events
             ]
             incident = pipeline.run(events, approved=False)
+            queued = reviews is not None and reviews.mark_pending(incident)
             repository.save_incident(incident)
+            if queued:
+                reviews.enqueue(incident.incident_id)
             return incident_to_dict(incident)
         except (KeyError, ValueError, TypeError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -236,9 +278,10 @@ def create_app():
         return incident
 
     @app.post("/incidents/{incident_id}/resolve")
-    def resolve_incident(incident_id: str) -> dict[str, Any]:
-        """Close an incident from the analyst console; it leaves the active queue."""
-        incident = repository.resolve_incident(incident_id, resolved_at=utc_now())
+    def resolve_incident(incident_id: str, request: Optional[ResolveRequest] = None) -> dict[str, Any]:
+        """Close an incident from the analyst console, with the analyst's reasoning; it leaves the active queue."""
+        note = request.note.strip() if request else ""
+        incident = repository.resolve_incident(incident_id, resolved_at=utc_now(), note=note)
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
         return incident

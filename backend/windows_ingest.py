@@ -19,7 +19,9 @@ import threading
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
 
-from agents import SecurityEvent, SecurityOperationsPipeline, Severity, utc_now
+from agents import Incident, SecurityEvent, SecurityOperationsPipeline, Severity, utc_now
+from analyst import RelatedEvent
+from llm_analyst import ReviewWorker, carry_over_review
 from database import IncidentRepository
 from file_scan import MALWARE_LOG_NAME, FileScanService, result_to_event
 
@@ -223,9 +225,12 @@ class WindowsIngestService:
         pipeline: SecurityOperationsPipeline,
         repository: IncidentRepository,
         file_scan: Optional[FileScanService] = None,
+        reviews: Optional[ReviewWorker] = None,
     ):
         self.pipeline = pipeline
         self.repository = repository
+        # Claude review of incidents the rules leave unresolved; None when disabled.
+        self.reviews = reviews
         # Scans executables from process-creation events; models load on first use.
         self.file_scan = file_scan or FileScanService()
         # Serializes ingests so concurrent requests cannot both process one event.
@@ -311,9 +316,63 @@ class WindowsIngestService:
                 event_id for event_id in events if event_id not in new_ids
             )
 
+            # The Analyst correlates each group with the rest of this collection and
+            # with earlier incidents on the same host.
+            history = self._host_history({event.host for event in new_events})
+            batch = [RelatedEvent(event, group_key=group_key(event)) for event in new_events]
+            saved: dict[str, Incident] = {}
             for group in group_events(new_events):
-                summary["incidents"].append(self._record_group(group))
+                key = group_key(group[0])
+                siblings = [self._resolve(item, saved) for item in batch if item.group_key != key]
+                record, incident = self._record_group(group, history + siblings)
+                saved[key] = incident
+                summary["incidents"].append(record)
+            self._link_batch(saved)
+        # Queued only after every save above, so no later save overwrites a review.
+        self._queue_reviews(saved.values())
         return summary
+
+    def _queue_reviews(self, incidents: Iterable[Incident]) -> None:
+        if self.reviews is None:
+            return
+        for incident in incidents:
+            if incident.risk_analysis.get("claude_review", {}).get("status") == "pending":
+                self.reviews.enqueue(incident.incident_id)
+
+    def related_activity(self, incident: Incident) -> list[RelatedEvent]:
+        """Recorded activity on the incident's host, for the Claude review tools."""
+        history = self._host_history({incident.events[0].host})
+        return [item for item in history if item.incident_id != incident.incident_id]
+
+    def _host_history(self, hosts: set[Optional[str]]) -> list[RelatedEvent]:
+        history = []
+        for host in hosts:
+            for stored in self.repository.recent_incidents_on_host(host):
+                title = stored.get("alert", {}).get("title")
+                history.extend(
+                    RelatedEvent(_restore_event(item), incident_id=stored["incident_id"], title=title)
+                    for item in stored["events"]
+                )
+        return history
+
+    @staticmethod
+    def _resolve(item: RelatedEvent, saved: dict[str, Incident]) -> RelatedEvent:
+        """Name the incident for an event whose group was already saved in this collection."""
+        incident = saved.get(item.group_key or "")
+        if incident is None:
+            return item
+        return RelatedEvent(item.event, incident_id=incident.incident_id, title=incident.alert.get("title"))
+
+    def _link_batch(self, saved: dict[str, Incident]) -> None:
+        """Fill in links to incidents that were saved after the incident that refers to them."""
+        for incident in saved.values():
+            pending = [item for item in incident.risk_analysis.get("correlations", []) if item.get("group_key")]
+            for item in pending:
+                target = saved.get(item.pop("group_key"))
+                if target is not None:
+                    item.update(incident_id=target.incident_id, title=target.alert.get("title"))
+            if pending:
+                self.repository.save_incident(incident)
 
     def ingest_scan_result(
         self,
@@ -333,26 +392,42 @@ class WindowsIngestService:
                 prior = self.repository.find_open_incident(group_key(event))
                 response["incident_id"] = prior["incident_id"] if prior else None
                 return response
-            response["incident"] = self._record_group([event])
+            response["incident"], incident = self._record_group([event], self._host_history({host}))
+        self._queue_reviews([incident])
         return response
 
-    def _record_group(self, group: list[SecurityEvent]) -> dict[str, Any]:
+    def _record_group(
+        self, group: list[SecurityEvent], related: list[RelatedEvent]
+    ) -> tuple[dict[str, Any], Incident]:
         """Open an incident for a group, or add its events to the group's open incident."""
         key = group_key(group[0])
         prior = self.repository.find_open_incident(key)
         prior_events = [_restore_event(item) for item in prior["events"]] if prior else []
         prior_alert = prior["alert"] if prior else {}
+        if prior:
+            # Its own older evidence is not related activity.
+            related = [item for item in related if item.incident_id != prior["incident_id"]]
 
         # Newest first: the agents treat the first event as the primary one.
         evidence = sorted(prior_events + group, key=lambda event: event.timestamp, reverse=True)
-        incident = self.pipeline.run(evidence[:MAX_STORED_EVENTS], approved=False, continues=prior)
+        occurrences = len(group) + prior_alert.get("occurrence_count", len(prior_events))
+        incident = self.pipeline.run(
+            evidence[:MAX_STORED_EVENTS],
+            approved=False,
+            continues=prior,
+            related=related,
+            occurrences=occurrences,
+        )
+        if carry_over_review(prior, incident):
+            self.pipeline.reassess(incident)
+        elif self.reviews is not None:
+            self.reviews.mark_pending(incident)
         if prior is None and self.repository.get_incident(incident.incident_id) is not None:
             # Same records replayed (dev reset): keep the earlier incident as history.
             incident.incident_id = hashlib.sha256(f"{incident.incident_id}|{incident.detected_at}".encode()).hexdigest()
             incident.alert["fingerprint"] = incident.incident_id
 
         timestamps = [event.timestamp for event in group]
-        occurrences = len(group) + prior_alert.get("occurrence_count", len(prior_events))
         incident.alert.update(
             occurrence_count=occurrences,
             first_seen=min(timestamps + [prior_alert.get("first_seen", min(timestamps))]),
@@ -370,7 +445,9 @@ class WindowsIngestService:
             "new_events": len(group),
             "occurrence_count": occurrences,
             "merged": prior is not None,
+            "verdict": incident.risk_analysis.get("verdict"),
+            "priority": incident.risk_analysis.get("priority"),
             "risk_score": incident.forecast.get("forecast_score"),
             "playbook": incident.selected_playbook,
             "status": incident.action_result.get("status"),
-        }
+        }, incident

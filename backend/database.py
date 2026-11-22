@@ -125,7 +125,7 @@ class IncidentRepository:
                 return None
             payload = json.loads(row["payload"])
             previous = payload.get("action_result", {}).get("status", "open")
-            payload["action_result"] = {**payload.get("action_result", {}), "status": "resolved", "previous_status": previous, "resolved_at": resolved_at}
+            payload["action_result"] = {**payload.get("action_result", {}), "status": "resolved", "previous_status": previous, "resolved_at": resolved_at, "resolution_note": note}
             entry = {"timestamp": resolved_at, "agent": "analyst", "action": "resolve_incident", "previous_status": previous, "note": note}
             payload.setdefault("audit_log", []).append(entry)
             self.connection.execute(
@@ -160,6 +160,10 @@ class IncidentRepository:
                 self.connection.execute(f"DELETE FROM {table}")
             self.connection.commit()
         return count
+
+    def recent_incidents_on_host(self, host: Optional[str], limit: int = 200) -> list[dict[str, Any]]:
+        """Newest incidents whose primary event is on this host, for Analyst correlation."""
+        return [item for item in self.list_incidents(limit) if item.get("events") and item["events"][0].get("host") == host]
 
     def list_incidents(self, limit: int = 100) -> list[dict[str, Any]]:
         with self._lock:

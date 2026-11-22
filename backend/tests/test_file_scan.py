@@ -136,8 +136,10 @@ class ServiceTests(unittest.TestCase):
 
     def test_resolved_incident_leaves_open_queue(self):
         incident_id = self.service.ingest_scan_result(scan_result(), host="HOST")["incident"]["incident_id"]
-        resolved = self.repository.resolve_incident(incident_id, resolved_at="2026-11-19T12:00:00+00:00")
+        resolved = self.repository.resolve_incident(incident_id, resolved_at="2026-11-19T12:00:00+00:00", note="Known test file")
         self.assertEqual(resolved["action_result"]["status"], "resolved")
+        self.assertEqual(resolved["action_result"]["resolution_note"], "Known test file")
+        self.assertEqual(resolved["audit_log"][-1]["note"], "Known test file")
         self.assertEqual(resolved["action_result"]["previous_status"], "approval_required")
         self.assertEqual(resolved["audit_log"][-1]["action"], "resolve_incident")
         self.assertEqual(self.repository.get_incident(incident_id)["action_result"]["status"], "resolved")

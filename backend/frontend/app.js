@@ -1,4 +1,16 @@
-const state = { incidents: [] };
+const state = { incidents: [], llm: {}, openIncidentId: null };
+
+function hasPendingReview() {
+  return state.incidents.some((item) => item.risk_analysis?.claude_review?.status === 'pending');
+}
+
+async function loadLlmStatus() {
+  try {
+    state.llm = await (await fetch('/llm/status')).json();
+  } catch {
+    state.llm = {};
+  }
+}
 
 function selectedSeverities() {
   return new Set([...document.querySelectorAll('#severity-filter input:checked')].map((box) => box.value));
@@ -39,12 +51,16 @@ function renderIncidents() {
   const search = $('#incident-search').value.trim().toLowerCase();
   const severities = selectedSeverities();
   const statusFilter = $('#status-filter').value;
+  const verdictFilter = $('#verdict-filter').value;
   const incidents = state.incidents.filter((incident) => {
     const status = incident.action_result?.status || 'open';
     const event = incident.events?.[0] || {};
-    const searchable = [incident.incident_id, incident.alert?.title, event.event_type, event.host, event.user].join(' ').toLowerCase();
+    const verdict = incident.risk_analysis?.verdict;
+    const searchable = [incident.incident_id, incident.alert?.title, event.event_type, event.host, event.user, verdict, incident.risk_analysis?.summary].join(' ').toLowerCase();
     const statusMatch = statusFilter === 'active' ? status !== 'resolved' : (!statusFilter || status === statusFilter);
-    return (!search || searchable.includes(search)) && severities.has(event.severity) && statusMatch;
+    // Incidents triaged before the Analyst gave verdicts have none and stay visible.
+    const verdictMatch = !verdictFilter || !verdict || (verdictFilter === 'actionable' ? verdict !== 'benign' : verdict === verdictFilter);
+    return (!search || searchable.includes(search)) && severities.has(event.severity) && statusMatch && verdictMatch;
   });
   if (!incidents.length) {
     list.innerHTML = '<div class="empty-state">No matching incidents found.</div>';
@@ -59,7 +75,13 @@ function renderIncidents() {
     const count = occurrenceCount(incident);
     const countBadge = count > 1 ? `<span class="count-badge" title="${count} occurrences">×${count}</span>` : '';
     const lastSeen = count > 1 ? ` · last seen ${escapeHtml(formatDate(incident.alert?.last_seen))}` : '';
-    return `<article class="incident-row" tabindex="0" role="button" data-incident-id="${escapeHtml(incident.incident_id)}"><div><div class="incident-title">${escapeHtml(title)}${countBadge}</div><div class="incident-meta">${escapeHtml(event.host || 'Unknown host')} · ${formatDate(incident.detected_at)}${lastSeen} · ${escapeHtml(incident.incident_id.slice(0, 10))}</div></div><div class="incident-right"><span class="severity-badge ${escapeHtml(severity)}">${escapeHtml(severity)}</span><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong class="risk-score">${score}<small>/100</small></strong><div class="risk-bar"><span style="width: ${Math.min(score, 100)}%"></span></div></div></article>`;
+    const triage = incident.risk_analysis || {};
+    const verdictBadge = triage.verdict ? `<span class="verdict-badge ${escapeHtml(triage.verdict)}" title="Analyst verdict">${escapeHtml(triage.priority || '')} · ${escapeHtml(triage.verdict)}</span>` : '';
+    const review = triage.claude_review?.status;
+    const claudeTag = review === 'pending' ? ' · Claude reviewing…' : (review === 'done' ? ' · reviewed by Claude' : '');
+    const humanTag = triage.needs_human_review ? ' · needs human decision' : '';
+    const triageLine = triage.summary ? `<div class="incident-meta">${escapeHtml(triage.summary)}${escapeHtml(claudeTag)}${escapeHtml(humanTag)}</div>` : '';
+    return `<article class="incident-row" tabindex="0" role="button" data-incident-id="${escapeHtml(incident.incident_id)}"><div><div class="incident-title">${escapeHtml(title)}${countBadge}</div>${triageLine}<div class="incident-meta">${escapeHtml(event.host || 'Unknown host')} · ${formatDate(incident.detected_at)}${lastSeen} · ${escapeHtml(incident.incident_id.slice(0, 10))}</div></div><div class="incident-right">${verdictBadge}<span class="severity-badge ${escapeHtml(severity)}">${escapeHtml(severity)}</span><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong class="risk-score">${score}<small>/100</small></strong><div class="risk-bar"><span style="width: ${Math.min(score, 100)}%"></span></div></div></article>`;
   }).join('');
   list.querySelectorAll('[data-incident-id]').forEach((row) => {
     row.addEventListener('click', () => openDrawer(row.dataset.incidentId));
@@ -85,9 +107,13 @@ async function loadIncidents() {
   try {
     const response = await fetch('/incidents?limit=100');
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    const reviewStatus = () => state.incidents.find((item) => item.incident_id === state.openIncidentId)?.risk_analysis?.claude_review?.status;
+    const before = reviewStatus();
     state.incidents = await response.json();
     renderMetrics();
     renderIncidents();
+    // Refresh an open drawer when its Claude review finishes (not on every poll, to keep the scroll position).
+    if (state.openIncidentId && $('#incident-drawer').classList.contains('open') && reviewStatus() !== before) openDrawer(state.openIncidentId);
   } catch (error) {
     $('#incident-list').innerHTML = '<div class="empty-state">Could not load incidents. Start the API and try again.</div>';
   }
@@ -138,7 +164,9 @@ async function collectEvents(event) {
     const merged = result.incidents.filter((item) => item.merged).length;
     const scan = result.malware_scan || {};
     const malware = scan.files_scanned ? ` Scanned ${scan.files_scanned} executables: ${result.malware_detected} flagged as malware.` : '';
-    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen${result.duplicates_in_resolved ? ` (${result.duplicates_in_resolved} already resolved)` : ''}.${malware}`;
+    const benign = result.incidents.filter((item) => item.verdict === 'benign').length;
+    const triaged = result.incidents.length ? ` Analyst: ${result.incidents.length - benign} need attention, ${benign} benign.` : '';
+    const summary = `Scanned ${result.events_scanned} events: ${result.anomalies_detected} anomalies, ${result.incidents.length - merged} new incidents, ${merged} updated with repeats, ${result.duplicates_skipped} events already seen${result.duplicates_in_resolved ? ` (${result.duplicates_in_resolved} already resolved)` : ''}.${malware}${triaged}`;
     const skipped = result.errors.map((item) => `${item.logName}: ${item.message}`).join(' ');
     message.className = `form-message ${skipped ? 'warning' : 'success'}`;
     message.textContent = skipped ? `${summary} Not collected, ${skipped}` : summary;
@@ -275,7 +303,7 @@ async function refreshLive() {
   try {
     const status = await (await fetch('/live/status')).json();
     const changes = (status.totals?.incidents_opened || 0) + (status.totals?.incidents_updated || 0);
-    if (live.changes !== null && changes !== live.changes) await loadIncidents();
+    if ((live.changes !== null && changes !== live.changes) || hasPendingReview()) await loadIncidents();
     live.changes = changes;
     renderLive(status);
   } catch {
@@ -377,6 +405,78 @@ function detectionDetails(incident) {
   return `${malwareDetails(incident)}<div class="detail-section"><span class="detail-label">MITRE ATT&amp;CK</span><p>${escapeHtml(techniques.join(', ') || 'No mapped techniques')}</p></div><div class="detail-section"><span class="detail-label">Detection reasons</span><p>${escapeHtml(reasons.join('; ') || 'Model score only')}</p></div>`;
 }
 
+const CLAUDE_OUTCOMES = {
+  agreed: 'Agrees with the rules.',
+  changed_verdict: 'Changed the verdict.',
+  disagreed: 'Disagrees with the rules. Rules are never lowered automatically, so a person must decide.',
+};
+
+function claudeDetails(incident) {
+  const review = incident.risk_analysis?.claude_review;
+  const canAsk = state.llm.mode && state.llm.mode !== 'off' && review?.status !== 'pending';
+  const ask = canAsk ? `<div class="scan-actions"><button class="text-button" type="button" id="ask-claude" data-incident-id="${escapeHtml(incident.incident_id)}">${review ? 'Ask Claude again' : 'Ask Claude to review'} →</button><div id="ask-claude-message" class="form-message" role="status"></div></div>` : '';
+  if (!review) return ask ? `<div class="detail-section"><span class="detail-label">Claude review</span><p class="incident-meta">Not reviewed: the rules settled this incident.</p>${ask}</div>` : '';
+  let body;
+  if (review.status === 'pending') {
+    body = `<p><span class="live-dot"></span>Claude is investigating this incident…</p>`;
+  } else if (review.status === 'done') {
+    const rule = incident.risk_analysis.rule_verdict;
+    const outcome = review.outcome === 'changed_verdict' ? `Changed the verdict from ${rule} to ${review.verdict}.` : (CLAUDE_OUTCOMES[review.outcome] || '');
+    const steps = (review.tool_calls || []).map((call) => `<li><code>${escapeHtml(call.tool)}</code> ${escapeHtml(JSON.stringify(call.input))}</li>`).join('');
+    const evidence = (review.evidence || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    const tokens = review.usage ? ` · ${Number(review.usage.input_tokens || 0).toLocaleString()} in / ${Number(review.usage.output_tokens || 0).toLocaleString()} out tokens` : '';
+    body = `<p><span class="verdict-badge ${escapeHtml(review.verdict)}">${escapeHtml(review.verdict)}</span> ${escapeHtml(review.confidence)} confidence${review.carried_over ? ' · reused from an earlier review of this incident' : ''}</p><p><strong>${escapeHtml(outcome)}</strong> ${escapeHtml(review.summary)}</p><p>${escapeHtml(review.reasoning)}</p>${evidence ? `<span class="detail-label">Evidence cited</span><ul class="triage-list">${evidence}</ul>` : ''}${steps ? `<span class="detail-label">Investigation steps</span><ol class="triage-list">${steps}</ol>` : '<p class="incident-meta">Decided without tool calls.</p>'}<p class="incident-meta">${escapeHtml(review.served_by || review.model || '')} · ${escapeHtml(review.seconds ?? '?')}s${escapeHtml(tokens)} · ${escapeHtml(formatDate(review.reviewed_at))}</p>`;
+  } else {
+    body = `<p class="warn">Review ${escapeHtml(review.status)}${review.detail ? `: ${escapeHtml(review.detail)}` : ''}. The rule verdict stands.</p>`;
+  }
+  return `<div class="detail-section"><span class="detail-label">Claude review</span>${body}${ask}</div>`;
+}
+
+async function askClaude(incidentId, button) {
+  button.disabled = true;
+  try {
+    const response = await fetch(`/incidents/${encodeURIComponent(incidentId)}/review`, { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : `Request failed (${response.status}).`);
+    await loadIncidents();
+  } catch (error) {
+    $('#ask-claude-message').className = 'form-message error';
+    $('#ask-claude-message').textContent = error.message;
+    button.disabled = false;
+  }
+}
+
+function benignDetails(triage) {
+  if (triage.verdict !== 'benign') return '';
+  // Incidents triaged before explanations existed fall back to the summary.
+  const why = triage.benign_explanation || `${triage.summary || ''} No finding in the score breakdown below points to attack activity.`;
+  const verdictNote = triage.needs_human_review
+    ? 'Claude disagrees with this verdict; read its review below before closing.'
+    : 'Safe to resolve once you have read this. Add your own reasoning below before marking it resolved.';
+  return `<div class="detail-section benign-callout"><span class="detail-label">Why this is benign</span><p>${escapeHtml(why)}</p><p class="incident-meta">${escapeHtml(verdictNote)}</p></div>`;
+}
+
+function triageDetails(incident) {
+  const triage = incident.risk_analysis || {};
+  if (!triage.verdict) return '';
+  const list = (items, render) => (items.length ? `<ul class="triage-list">${items.map(render).join('')}</ul>` : '<p>None</p>');
+  const findings = list(triage.findings || [], (item) => {
+    const points = Number(item.points || 0);
+    const label = points ? `${points > 0 ? '+' : ''}${Math.round(points)}` : '·';
+    return `<li><span class="finding-points ${points > 0 ? 'up' : ''}">${escapeHtml(label)}</span>${escapeHtml(item.text)}</li>`;
+  }).replace('class="triage-list"', 'class="triage-list findings-list"');
+  const links = list(triage.correlations || [], (item) => {
+    const target = item.incident_id && state.incidents.some((other) => other.incident_id === item.incident_id)
+      ? `<button class="link-button" type="button" data-open-incident="${escapeHtml(item.incident_id)}">${escapeHtml(item.title || item.incident_id.slice(0, 10))}</button>`
+      : escapeHtml(item.title || item.event_type || 'Related activity');
+    return `<li>${target}: ${escapeHtml(item.relation)} (${escapeHtml(item.event_count)} event${item.event_count === 1 ? '' : 's'})</li>`;
+  });
+  const techniques = (triage.mitre_techniques || []).join(', ') || 'None confirmed by the evidence';
+  const candidates = triage.sentinel_candidate_techniques ? ` <span class="incident-meta">(Sentinel mapped ${escapeHtml(triage.sentinel_candidate_techniques)} candidates for this event type)</span>` : '';
+  const humanReview = triage.needs_human_review ? '<p class="warn">Claude and the rules disagree: needs a human decision.</p>' : '';
+  return `${benignDetails(triage)}<div class="detail-section"><span class="detail-label">Analyst triage</span><p><span class="verdict-badge ${escapeHtml(triage.verdict)}">${escapeHtml(triage.priority)} · ${escapeHtml(triage.verdict)}</span> ${escapeHtml(triage.summary || '')}</p>${humanReview}<dl class="detail-grid"><dt>Decision</dt><dd>${escapeHtml(triage.triage || '')}</dd><dt>Category</dt><dd>${escapeHtml((triage.category || '').replaceAll('_', ' '))}</dd><dt>Triage score</dt><dd>${escapeHtml(Math.round(triage.risk_score || 0))}/100</dd><dt>Confidence</dt><dd>${escapeHtml(percent(triage.confidence))}</dd><dt>ATT&amp;CK</dt><dd>${escapeHtml(techniques)}${candidates}</dd></dl></div><div class="detail-section"><span class="detail-label">Why (score breakdown)</span>${findings}</div><div class="detail-section"><span class="detail-label">Correlated activity</span>${links}</div><div class="detail-section"><span class="detail-label">Recommended next steps</span>${list(triage.recommended_actions || [], (item) => `<li>${escapeHtml(item)}</li>`)}</div>${claudeDetails(incident)}`;
+}
+
 function openDrawer(incidentId) {
   const incident = state.incidents.find((item) => item.incident_id === incidentId);
   if (!incident) return;
@@ -384,11 +484,18 @@ function openDrawer(incidentId) {
   const status = incident.action_result?.status || 'open';
   const score = Math.round(riskScore(incident));
   const resolved = status === 'resolved';
+  // Keep a half-typed note when the open drawer re-renders (e.g. a Claude review finishing).
+  const draft = state.openIncidentId === incidentId ? ($('#resolve-note')?.value || '') : '';
+  const note = incident.action_result?.resolution_note;
   const resolveControl = resolved
-    ? `<p class="resolved-note">Resolved ${escapeHtml(formatDate(incident.action_result?.resolved_at))}</p>`
-    : `<button class="resolve-button" type="button" id="resolve-incident" data-incident-id="${escapeHtml(incident.incident_id)}">Mark as resolved ✓</button><div id="resolve-message" class="form-message" role="status"></div>`;
+    ? `<p class="resolved-note">Resolved ${escapeHtml(formatDate(incident.action_result?.resolved_at))}</p>${note ? `<span class="detail-label">Analyst reasoning</span><p class="resolution-note">${escapeHtml(note)}</p>` : ''}`
+    : `<label class="detail-label" for="resolve-note">Your reasoning</label><textarea id="resolve-note" rows="3" maxlength="4000" placeholder="Why is this safe to close? E.g. confirmed with the user, expected maintenance, known false positive…">${escapeHtml(draft)}</textarea><button class="resolve-button" type="button" id="resolve-incident" data-incident-id="${escapeHtml(incident.incident_id)}">Mark as resolved ✓</button><div id="resolve-message" class="form-message" role="status"></div>`;
   $('#drawer-title').textContent = incident.alert?.title || event.event_type || 'Security incident';
-  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><div class="drawer-actions">${resolveControl}</div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl><div class="detail-section"><span class="detail-label">Analyst summary</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
+  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><div class="drawer-actions">${resolveControl}</div><dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl>${triageDetails(incident)}<div class="detail-section"><span class="detail-label">Sentinel detection</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>${detectionDetails(incident)}<div class="detail-section"><span class="detail-label">Recommended playbook</span><p>${escapeHtml(incident.selected_playbook || 'Not assigned')}</p></div>`;
+  $('#drawer-content').querySelectorAll('[data-open-incident]').forEach((button) => button.addEventListener('click', () => openDrawer(button.dataset.openIncident)));
+  const askButton = $('#ask-claude');
+  if (askButton) askButton.addEventListener('click', () => askClaude(askButton.dataset.incidentId, askButton));
+  state.openIncidentId = incident.incident_id;
   const resolveButton = $('#resolve-incident');
   if (resolveButton) resolveButton.addEventListener('click', () => resolveIncident(resolveButton.dataset.incidentId, resolveButton));
   $('#incident-drawer').classList.add('open');
@@ -398,7 +505,12 @@ function openDrawer(incidentId) {
 async function resolveIncident(incidentId, button) {
   button.disabled = true;
   try {
-    const response = await fetch(`/incidents/${encodeURIComponent(incidentId)}/resolve`, { method: 'POST' });
+    const note = $('#resolve-note')?.value.trim() || '';
+    const response = await fetch(`/incidents/${encodeURIComponent(incidentId)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note }),
+    });
     if (!response.ok) throw new Error(`Could not resolve incident (${response.status}).`);
     closeDrawer();
     await loadIncidents();
@@ -410,6 +522,7 @@ async function resolveIncident(incidentId, button) {
 }
 
 function closeDrawer() {
+  state.openIncidentId = null;
   $('#incident-drawer').classList.remove('open');
   $('#incident-drawer').setAttribute('aria-hidden', 'true');
 }
@@ -433,11 +546,12 @@ document.addEventListener('click', (event) => {
   if (dropdown.open && !dropdown.contains(event.target)) dropdown.open = false;
 });
 $('#status-filter').addEventListener('change', renderIncidents);
+$('#verdict-filter').addEventListener('change', renderIncidents);
 $('#close-drawer').addEventListener('click', closeDrawer);
 document.querySelector('[data-close-drawer]').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDrawer(); });
 checkHealth();
-loadIncidents();
+loadLlmStatus().then(loadIncidents);
 loadScanStatus();
 loadDevStatus();
 refreshLive();
