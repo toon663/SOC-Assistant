@@ -1,0 +1,95 @@
+[
+  {
+    "id": "T1110",
+    "name": "Brute Force",
+    "tactic": "Credential Access",
+    "description": "Repeated authentication failures may be consistent with password guessing or brute-force activity.",
+    "evidence_event_ids": [
+      4625
+    ],
+    "response": [
+      "Review source IP and target account",
+      "Check for subsequent successful logons",
+      "Apply account protection policy after analyst validation"
+    ],
+    "confidence_note": "A 4625 event alone does not prove brute force."
+  },
+  {
+    "id": "T1078",
+    "name": "Valid Accounts",
+    "tactic": "Initial Access, Persistence, Privilege Escalation, Defense Evasion",
+    "description": "Successful logons using valid accounts may be relevant when paired with unusual source, time or privilege activity.",
+    "evidence_event_ids": [
+      4624,
+      4672
+    ],
+    "response": [
+      "Verify account owner and logon source",
+      "Review sign-in history and privilege use",
+      "Escalate if activity is unauthorised"
+    ],
+    "confidence_note": "A successful logon is not inherently malicious."
+  },
+  {
+    "id": "T1098",
+    "name": "Account Manipulation",
+    "tactic": "Persistence, Privilege Escalation",
+    "description": "Unexpected account creation or group membership changes may indicate account manipulation.",
+    "evidence_event_ids": [
+      4720,
+      4732
+    ],
+    "response": [
+      "Confirm change against approved requests",
+      "Review actor and affected account",
+      "Revoke unauthorised changes only after approval"
+    ],
+    "confidence_note": "Legitimate administration can produce these events."
+  },
+  {
+    "id": "T1070.001",
+    "name": "Clear Windows Event Logs",
+    "tactic": "Defense Evasion",
+    "description": "Security log clearing can remove evidence and warrants prompt investigation.",
+    "evidence_event_ids": [
+      1102
+    ],
+    "response": [
+      "Preserve available event evidence",
+      "Check centralised logs and other telemetry",
+      "Escalate for incident response"
+    ],
+    "confidence_note": "Validate administrative maintenance context."
+  },
+  {
+    "id": "T1543.003",
+    "name": "Windows Service",
+    "tactic": "Persistence, Privilege Escalation",
+    "description": "Unexpected service installation may indicate persistence or execution through a Windows service.",
+    "evidence_event_ids": [
+      4697,
+      7045
+    ],
+    "response": [
+      "Inspect service name, binary path and signer",
+      "Compare with approved software deployment",
+      "Quarantine only through approved response procedure"
+    ],
+    "confidence_note": "Software installation is not automatically malicious."
+  },
+  {
+    "id": "T1059.001",
+    "name": "PowerShell",
+    "tactic": "Execution",
+    "description": "PowerShell process or command evidence can be relevant to script-based execution, especially with suspicious command-line indicators.",
+    "evidence_event_ids": [
+      4688
+    ],
+    "response": [
+      "Capture command line and parent process",
+      "Check script block logs where enabled",
+      "Review endpoint detection telemetry"
+    ],
+    "confidence_note": "PowerShell is widely used legitimately."
+  }
+]

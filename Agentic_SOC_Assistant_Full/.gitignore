@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+models/*.joblib
+outputs/*
+!outputs/.gitkeep
+data/windows_logs/*.csv

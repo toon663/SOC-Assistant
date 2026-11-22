@@ -1,0 +1,60 @@
+{
+  "rows_before_dedup": 340693,
+  "rows_after_dedup": 142440,
+  "duplicates_removed": 198253,
+  "accuracy": 0.9770780679584387,
+  "macro_f1": 0.9528286325448733,
+  "classification_report": {
+    "Backdoor": {
+      "precision": 0.9842559963623962,
+      "recall": 0.9892602113681805,
+      "f1-score": 0.9867517593093821,
+      "support": 17505.0
+    },
+    "DoS": {
+      "precision": 0.9355932203389831,
+      "recall": 0.8070175438596491,
+      "f1-score": 0.8665620094191523,
+      "support": 342.0
+    },
+    "Generic": {
+      "precision": 0.9991796554552912,
+      "recall": 0.9967266775777414,
+      "f1-score": 0.9979516591560835,
+      "support": 1222.0
+    },
+    "Probe": {
+      "precision": 0.9532258064516129,
+      "recall": 0.9231970840926842,
+      "f1-score": 0.9379711678349425,
+      "support": 3841.0
+    },
+    "Worm": {
+      "precision": 0.9678445229681979,
+      "recall": 0.9820724273933309,
+      "f1-score": 0.9749065670048052,
+      "support": 5578.0
+    },
+    "accuracy": 0.9770780679584387,
+    "macro avg": {
+      "precision": 0.9680198403152962,
+      "recall": 0.9396547888583171,
+      "f1-score": 0.9528286325448733,
+      "support": 28488.0
+    },
+    "weighted avg": {
+      "precision": 0.9769147959963247,
+      "recall": 0.9770780679584387,
+      "f1-score": 0.9768929643298102,
+      "support": 28488.0
+    }
+  },
+  "classes": [
+    "Backdoor",
+    "DoS",
+    "Generic",
+    "Probe",
+    "Worm"
+  ],
+  "note": "Five attack categories only; no benign class in supplied CSV."
+}
