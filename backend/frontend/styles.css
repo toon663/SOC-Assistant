@@ -157,6 +157,13 @@ textarea { resize: vertical; }
 .drawer-actions textarea { margin: 6px 0 10px; }
 .drawer-actions .detail-label { display: block; margin-top: 12px; }
 .resolution-note { margin: 4px 0 0; font-size: 12px; white-space: pre-wrap; }
+.risk-callout { border-left: 3px solid var(--gold); padding-left: 12px; background: rgba(245,189,97,.05); }
+.risk-callout.malicious { border-left-color: var(--red); background: rgba(255,111,127,.05); }
+.code-ref { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 10px; }
+.explain-text { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.explain-grid dd { line-height: 1.45; }
+.explain-details { margin-top: 10px; }
+.explain-details summary { cursor: pointer; color: var(--blue); font-size: 12px; }
 .benign-callout { border-left: 3px solid var(--green); padding-left: 12px; background: rgba(83,214,155,.05); }
 .scan-note { color: var(--muted); font-size: 11px; margin: 10px 0 0; }
 .scan-result { margin-top: 14px; border-top: 1px solid var(--line); }
