@@ -524,6 +524,7 @@ function triageDetails(incident) {
 function openDrawer(incidentId) {
   const incident = state.incidents.find((item) => item.incident_id === incidentId);
   if (!incident) return;
+  state.activeIncidentId = incidentId;
   const event = incident.events?.[0] || {};
   const status = incident.action_result?.status || 'open';
   const score = Math.round(riskScore(incident));

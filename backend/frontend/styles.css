@@ -77,6 +77,15 @@ h2 { font-size: 19px; }
 .status-badge.approval_required { color: var(--gold); border-color: rgba(245,189,97,.35); }
 .status-badge.executed { color: var(--green); border-color: rgba(83,214,155,.35); }
 .status-badge.blocked_by_policy { color: var(--red); border-color: rgba(255,111,127,.35); }
+.status-badge.denied { color: var(--red); border-color: rgba(255,111,127,.35); }
+.review-section h3 { margin: 0; font-size: 16px; }
+.review-section form { margin-top: 18px; }
+.review-section .review-note { color: var(--muted); font-size: 12px; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.review-actions button { flex: 1; width: auto; min-width: 135px; justify-content: center; }
+.deny-button { color: var(--red); border: 1px solid var(--red); background: transparent; border-radius: 8px; padding: 12px 14px; font-size: 12px; font-weight: 800; }
+.deny-button:hover { background: rgba(255,111,127,.1); }
+.deny-button:disabled { cursor: wait; opacity: .6; }
 .risk-score { display: block; color: var(--text); font-size: 16px; font-weight: 800; margin-top: 7px; }
 .risk-bar {
   height: 6px;
