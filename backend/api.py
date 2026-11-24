@@ -15,7 +15,6 @@ from config import settings
 from database import IncidentRepository
 from explain import annotate, warm_up
 from file_scan import ScanUnavailable
-from gatherer import gather_security_events
 from integrations import IntegrationHub
 from live_detection import LiveDetector
 from security_log import gather_security_events

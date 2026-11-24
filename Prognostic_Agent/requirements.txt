@@ -1,1 +1,3 @@
-# Phase 1 uses Python 3.10+ standard library only. No installation required.
+# Deterministic mode uses Python 3.10+ standard library only. No installation required.
+# Optional explanation provider only: install anthropic separately when opting in.
+# Deliberately not a required dependency; tests use fake providers with no SDK/network.

@@ -22,6 +22,7 @@ from .payload_categories import LEGACY, legacy_envelope, missing_analyst_fields
 from .service import ForecastService, shadow_metrics
 from .shadow_source import inspect_snapshot, snapshot_source
 from .storage import ForecastHistory, storage_time
+from .activity_tags import classify_activity
 
 SHADOW_HISTORY = PRIVATE_DIR / "shadow" / "forecast_history.db"
 
@@ -40,6 +41,7 @@ class ShadowLedger:
             if version == 0:
                 history.connection.execute("INSERT INTO shadow_schema_migrations VALUES(1,?,?)", (history.environment, storage_time(datetime.now(timezone.utc))))
             history.connection.execute("CREATE TABLE IF NOT EXISTS shadow_payload_categories(environment TEXT NOT NULL,assessment_key TEXT NOT NULL,category TEXT NOT NULL,missing_fields_json TEXT NOT NULL,PRIMARY KEY(environment,assessment_key))")
+            history.connection.execute("CREATE TABLE IF NOT EXISTS shadow_report_tags(environment TEXT NOT NULL,assessment_key TEXT NOT NULL,tags_json TEXT NOT NULL,PRIMARY KEY(environment,assessment_key))")
             if version < 2:
                 history.connection.execute("INSERT INTO shadow_schema_migrations VALUES(2,?,?)", (history.environment, storage_time(datetime.now(timezone.utc))))
             # Recover the small gap after a committed service result and before
@@ -117,9 +119,11 @@ def run_shadow_batch(source_db, inventory_path, *, output_dir, history_path=SHAD
         done = ledger.keys()
         source_identity = source["source_identity"]
         categories, fresh_count, done_count = {}, 0, 0
+        report_tags = {}
         def eligible(row):
             nonlocal fresh_count, done_count
             key = assessment_key(source_identity, row)
+            report_tags[key] = classify_activity(row["incident"])
             missing = missing_analyst_fields(row["incident"])
             if missing:
                 categories[key] = missing
@@ -134,6 +138,9 @@ def run_shadow_batch(source_db, inventory_path, *, output_dir, history_path=SHAD
         selected, selection = select_incidents(source["snapshot_path"], limit,
                                                eligible=eligible)
         ledger.classify(categories)
+        with history._transaction():
+            history.connection.executemany("INSERT INTO shadow_report_tags VALUES(?,?,?) ON CONFLICT(environment,assessment_key) DO UPDATE SET tags_json=excluded.tags_json",
+                [("test", key, json.dumps(value)) for key, value in report_tags.items()])
         service = ForecastService(history, config=config)
         provider = LocalJSONAssetProvider(inventory_path)
         for row in selected:
@@ -141,6 +148,7 @@ def run_shadow_batch(source_db, inventory_path, *, output_dir, history_path=SHAD
                        "source_identity": source_identity, "source_payload_sha256": row["source_payload_sha256"],
                        "source_incident_id": row["source_incident_id"], "analyst_verdict": row["analyst_verdict"],
                        "evaluation_id": evaluation_id, "inventory_sha256": inventory_hash}
+            context["activity"] = report_tags[context["assessment_key"]]
             missing = missing_analyst_fields(row["incident"])
             if missing:
                 context.update(payload_category=LEGACY, missing_analyst_fields=missing)

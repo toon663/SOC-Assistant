@@ -10,6 +10,14 @@ from copy import deepcopy
 from .contracts import content_hash, parse_time, utc_text
 
 
+def normalize_source_ip(value):
+    if isinstance(value, str):
+        value = value.strip()
+        if value in {"", "-", "::1", "127.0.0.1"}:
+            return None
+    return value
+
+
 def adapt_analyst_incident(incident, *, behavioral_score=None, technique_evidence=None, guard_context=None):
     if not isinstance(incident, dict):
         raise ValueError("Analyst incident must be a serialized JSON object")
@@ -18,6 +26,9 @@ def adapt_analyst_incident(incident, *, behavioral_score=None, technique_evidenc
     if not isinstance(analysis, dict) or not isinstance(incident.get("events", []), list):
         raise ValueError("Analyst risk_analysis must be an object and events must be an array")
     issues = []
+    for event in incident.get("events", []):
+        if isinstance(event, dict) and "source_ip" in event:
+            event["source_ip"] = normalize_source_ip(event["source_ip"])
     entities, events = {}, []
 
     def entity(value, kind):

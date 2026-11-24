@@ -135,7 +135,8 @@ def _build_risk_forecast(payload, *, asset_provider=None, asset_providers=None,
     })
 
 
-def build_risk_forecast(payload, *, asset_provider=None, asset_providers=None, config=None, forecast_as_of=None):
+def build_risk_forecast(payload, *, asset_provider=None, asset_providers=None, config=None, forecast_as_of=None,
+                        explanation_config=None, explanation_provider=None):
     """Every response, including errors, carries explicit version provenance."""
     started = perf_counter()
     config = config or ForecastConfig()
@@ -152,4 +153,9 @@ def build_risk_forecast(payload, *, asset_provider=None, asset_providers=None, c
     source, may_include = response.get("behavioral_score_source", "unknown"), response.get("risk_score_may_include_asset_impact")
     response.update({**metadata, "versions": versions, "behavioral_score_source": source, "risk_score_may_include_asset_impact": may_include})
     response.setdefault("diagnostics", {})["total_ms"] = round((perf_counter() - started) * 1000, 3)
+    # The optional layer runs AFTER final assessment/provenance/timings. It has
+    # no references to mutable engine state and cannot re-run scoring.
+    if explanation_config is not None and explanation_config.enabled:
+        from .llm_explanation import explain_forecast
+        response = explain_forecast(response, payload, config=explanation_config, provider=explanation_provider)
     return response

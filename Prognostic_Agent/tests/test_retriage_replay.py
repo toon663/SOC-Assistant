@@ -11,7 +11,7 @@ import unittest
 
 from Prognostic_Agent.contracts import utc_text
 from Prognostic_Agent.private_paths import PRIVATE_DIR
-from Prognostic_Agent.retriage_replay import event_order_key, project_event, run_retriage_replay
+from Prognostic_Agent.retriage_replay import copy_incidents, event_order_key, project_event, run_retriage_replay
 from Prognostic_Agent.shadow_source import sha256_file
 from Prognostic_Agent.tests.test_adapter import incident
 from Prognostic_Agent.tests.test_import_inventory import raw_export
@@ -25,6 +25,8 @@ class RetriageReplayTests(unittest.TestCase):
         cls.temp = TemporaryDirectory(prefix="test-retriage-", dir=PRIVATE_DIR)
         cls.root = Path(cls.temp.name)
         cls.source = cls.root / "source.db"
+        cls.export = cls.root / "raw.json"
+        cls.overlay = cls.root / "overlay.json"
         now = datetime.now(timezone.utc)
         raw = raw_export()
         raw["collected_at"] = utc_text(now - timedelta(minutes=5))
@@ -54,7 +56,7 @@ class RetriageReplayTests(unittest.TestCase):
         invalid = incident()
         invalid["incident_id"] = "original-invalid"
         invalid["events"][0].update(event_id="invalid-api-1", timestamp=utc_text(now - timedelta(minutes=4)), host="LAB-PC",
-            user="LAB-PC\\alice", severity="high", source="api-fixture", source_ip="", event_type="api-fixture", metadata={})
+            user="LAB-PC\\alice", severity="high", source="api-fixture", source_ip=42, event_type="api-fixture", metadata={})
         with closing(sqlite3.connect(cls.source)) as connection:
             connection.execute("CREATE TABLE incidents(incident_id TEXT PRIMARY KEY,detected_at TEXT,payload TEXT)")
             for item in (first, malware, invalid):
@@ -133,6 +135,26 @@ class RetriageReplayTests(unittest.TestCase):
     def test_ordering_preserves_submicroseconds_and_normalizes_offsets(self):
         self.assertLess(event_order_key("2026-11-23T12:00:00.1234561Z"), event_order_key("2026-11-23T12:00:00.1234562Z"))
         self.assertEqual(event_order_key("2026-11-23T12:00:00.1234562Z"), event_order_key("2026-11-23T04:00:00.1234562-08:00"))
+
+    def test_explicit_cohort_does_not_include_later_added_incidents(self):
+        target = self.root / "cohort.db"
+        self.assertEqual(copy_incidents(self.source, target, {"original-malware"}), 1)
+        with closing(sqlite3.connect(target)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM replay_events").fetchone()[0], 1)
+        with self.assertRaisesRegex(ValueError, "cohort IDs"):
+            copy_incidents(self.source, self.root / "missing.db", {"not-present"})
+
+    def test_causal_mode_uses_each_last_event_and_only_replay_asset_assumptions(self):
+        report = run_retriage_replay(self.source, self.export, self.overlay, output_dir=self.root / "causal", causal=True)
+        for item in report["results"]:
+            expected = max(ref["timestamp"] for ref in item["evidence_references"])
+            self.assertEqual(item["causal_cutoff"], expected)
+            self.assertNotEqual(item["forecast"].get("reason"), "stale_evidence")
+            self.assertEqual(item["forecast"]["shadow_context"]["asset_context_source"], "operator_replay")
+        for path in (self.root / "causal" / "causal-inventories").glob("*.json"):
+            inventory = json.loads(path.read_text())
+            self.assertEqual(inventory["source"], "operator_replay")
+            self.assertTrue(all(row["privilege_level"] is None for row in inventory["entities"] if row["entity_type"] == "host"))
 
 
 if __name__ == "__main__":

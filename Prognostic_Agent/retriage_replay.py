@@ -32,6 +32,7 @@ from .provenance import operational_error, provenance
 from .service import ForecastService
 from .shadow_source import sha256_file, snapshot_source, source_manifest
 from .storage import ForecastHistory
+from .replay_context import causal_inventory, host_audit, verdict_coverage
 
 SOURCE = "retriage_replay"
 ROOT = AGENT_DIR.parent
@@ -86,11 +87,15 @@ def event_order_key(timestamp):
     return parsed.replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S") + "." + fraction.ljust(12, "0")
 
 
-def copy_incidents(snapshot_path, database_path):
+def copy_incidents(snapshot_path, database_path, original_ids=None):
     """Versioned disposable evidence DB; source opened immutable/read-only."""
     with closing(sqlite3.connect(Path(snapshot_path).as_uri() + "?mode=ro&immutable=1", uri=True)) as source:
         source.execute("PRAGMA query_only=ON")
         rows = source.execute("SELECT incident_id,payload FROM incidents ORDER BY detected_at,incident_id").fetchall()
+    if original_ids is not None:
+        rows = [row for row in rows if row[0] in original_ids]
+        if {row[0] for row in rows} != set(original_ids):
+            raise ValueError("Not all requested cohort IDs exist in the source snapshot")
     with closing(sqlite3.connect(database_path)) as target:
         target.execute("PRAGMA journal_mode=WAL")
         target.execute("PRAGMA busy_timeout=5000")
@@ -181,7 +186,7 @@ def render_reports(directory, report):
     write_private(directory / "retriage_replay.json", report)
 
 
-def run_retriage_replay(source_db, raw_export, operator_overlay, *, output_dir, store_full_evidence=False):
+def run_retriage_replay(source_db, raw_export, operator_overlay, *, output_dir, store_full_evidence=False, causal=False, original_ids=None):
     directory = private_path(output_dir)
     directory.mkdir(parents=True, exist_ok=False)
     source_db = Path(source_db).resolve()
@@ -202,11 +207,13 @@ def run_retriage_replay(source_db, raw_export, operator_overlay, *, output_dir, 
     with TemporaryDirectory(prefix="temporary-evidence-", dir=directory) as working:
         work = Path(working)
         snapshot = snapshot_source(source_db, work / "snapshot")
-        incident_count = copy_incidents(snapshot["snapshot_path"], work / "events.db")
+        incident_count = copy_incidents(snapshot["snapshot_path"], work / "events.db", original_ids)
         with closing(sqlite3.connect(work / "events.db")) as connection:
             connection.row_factory = sqlite3.Row
             source_incidents = {row["original_triage_id"]: json.loads(row["payload_json"])
                                 for row in connection.execute("SELECT * FROM source_incidents")}
+            matching_audit = host_audit(source_incidents, inventory)
+            host_aliases = {host: "recorded_host_" + str(index) for index, host in enumerate(sorted({e.get("host") for item in source_incidents.values() for e in item["events"] if e.get("host")}), 1)}
             rows = [{"original_triage_id": row["original_triage_id"], "ordinal": row["ordinal"], "event": json.loads(row["event_json"])}
                     for row in connection.execute("SELECT * FROM replay_events ORDER BY event_order,original_triage_id,ordinal")]
             projections, missing, probes, detector_warnings = score_copied_events(rows, detector, catalog, model_path, work / "events.db")
@@ -254,11 +261,20 @@ def run_retriage_replay(source_db, raw_export, operator_overlay, *, output_dir, 
                                "evaluation_id": SOURCE + ":" + run_id + ":" + original_id}
                     request = adapt_analyst_incident(adapter_input)
                     request["adapter_metadata"]["replay"] = context
-                    response = service.assess(request, asset_provider=LocalJSONAssetProvider(inventory_path), forecast_as_of=cutoff,
+                    assessment_cutoff = max(parse_time(e["timestamp"]) for e in original["events"]) if causal else cutoff
+                    assessment_inventory = inventory_path
+                    if causal:
+                        assessment_inventory = directory / "causal-inventories" / (content_hash(original_id) + ".json")
+                        write_private(assessment_inventory, causal_inventory(inventory, adapter_input["events"], assessment_cutoff))
+                        context["inventory_sha256"] = sha256_file(assessment_inventory)
+                        context["asset_context_source"] = "operator_replay"
+                    response = service.assess(request, asset_provider=LocalJSONAssetProvider(assessment_inventory), forecast_as_of=assessment_cutoff,
                                               evaluation_id=context["evaluation_id"], shadow_context=context)
                     results.append({"source": SOURCE, "environment": "test", "original_triage_id": original_id,
                         "original_triaged_at": context["original_triaged_at"], "original_verdict": (original.get("risk_analysis") or {}).get("verdict"),
                         "retained_events": len(original["events"]), "original_occurrences": original.get("alert", {}).get("occurrence_count", len(original["events"])),
+                        "recorded_host_aliases": sorted({host_aliases[e["host"]] for e in original["events"] if e.get("host")}),
+                        "causal_cutoff": utc_text(assessment_cutoff),
                         "detector": dict(probe_stats[original_id]), "analyst_incident_id": serialized["incident_id"],
                         "analyst": serialized["risk_analysis"],
                         "sentinel_alert": serialized["alert"] if store_full_evidence else {
@@ -291,14 +307,21 @@ def run_retriage_replay(source_db, raw_export, operator_overlay, *, output_dir, 
         "status_counts": dict(sorted(Counter(row["status"] for row in comparison).items())),
         "reason_counts": dict(sorted(Counter(row["reason"] for row in comparison).items())),
         "analyst_verdict_counts": dict(sorted(Counter(row["analyst_verdict"] for row in comparison).items())),
+        "host_matching_redacted": matching_audit, "verdict_coverage": verdict_coverage(results),
+        "rule_reach": [{"original_triage_id": item["original_triage_id"],
+                        "starting_techniques": item["analyst"]["mitre_techniques"],
+                        "generated_candidates": item["forecast"].get("diagnostics", {}).get("generated_candidates", 0),
+                        "rejected_transitions": item["forecast"].get("diagnostics", {}).get("rejected_transitions", []),
+                        "scored_candidates": len(item["forecast"].get("candidate_paths", [])),
+                        "impact_scored": item["forecast"].get("risk_score") is not None} for item in results],
         "incidents_with_techniques": [row for row in comparison if row["technique_ids"]],
         "old_suspicious_incidents": [row for row in comparison if row["original_verdict"] == "suspicious"],
         "detector_warnings": detector_warnings, "missing_projection_fields": dict(sorted(missing_counts.items())),
         "execution": {"source": SOURCE, "environment": "test", "model_loaded_existing": True, "threshold": .55,
             "ordering": "Global event timestamp, original triage ID and source ordinal; related events only from already replayed evidence",
             "admission_policy": "All retained incident evidence is re-triaged, including RF/routine-filter suppressions, which are reported separately",
-            "evidence_clock": "Original timestamps retained; forecast cutoff is current replay time; no synthetic freshness",
-            "inventory_clock": "Fresh local export with host-specific normal overlay; no cross-host inventory remapping",
+            "evidence_clock": "Per-incident last original event time" if causal else "Current replay time; original timestamps retained",
+            "inventory_clock": "Replay-only normal host criticality assumptions at cutoff; future observed inventory excluded" if causal else "Fresh local export with host-specific normal overlay",
             "missing_raw_features": "Projection from normalized records, not a faithful raw Event Viewer export; omitted fields retain detector defaults",
             "static_malware": "Recorded static evidence only; no executable opened or rescanned; no malware model loaded",
             "side_effects": "No backend pipeline/orchestrator, LLM, threat-intel download, watcher, live ingest or external write"},
@@ -316,14 +339,17 @@ def main(argv=None):
     parser.add_argument("--operator-overlay", default=PRIVATE_DIR / "operator_overlay.json")
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--store-full-evidence", action="store_true")
+    parser.add_argument("--causal", action="store_true", help="Per-incident last-event cutoff and replay-only normal criticality for recorded hosts")
+    parser.add_argument("--cohort-report", help="Private previous replay report whose original triage IDs define the cohort")
     parser.add_argument("--environment", choices=["test"], required=True)
     args = parser.parse_args(argv)
     confine_private_runtime()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     directory = args.output_dir or PRIVATE_DIR / "retriage-replay" / (stamp + "_" + uuid.uuid4().hex[:8])
     try:
+        original_ids = {item["original_triage_id"] for item in json.loads(private_path(args.cohort_report).read_text(encoding="utf-8"))["results"]} if args.cohort_report else None
         report = run_retriage_replay(args.backend_db, args.raw_export, args.operator_overlay,
-                                    output_dir=directory, store_full_evidence=args.store_full_evidence)
+                                    output_dir=directory, store_full_evidence=args.store_full_evidence, causal=args.causal, original_ids=original_ids)
     except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
         error = {**operational_error("retriage_replay_error", str(exc), metadata=provenance(ForecastConfig(environment="test"))),
                  "source": SOURCE, "original_triage_id": None}

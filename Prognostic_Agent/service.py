@@ -23,7 +23,7 @@ def forecast_summary(response):
     )} | {"predicted_path": [step["technique_id"] for step in (response.get("predicted_path") or {}).get("steps", [])]}
 
 
-def shadow_metrics(response, payload, *, elapsed_ms, replay=False, legacy=None):
+def shadow_metrics(response, payload, *, elapsed_ms, replay=False, legacy=None, llm_enabled=False):
     diagnostics = response.get("diagnostics", {})
     context = response.get("asset_context", {})
     radius = response.get("blast_radius", {})
@@ -61,7 +61,9 @@ def shadow_metrics(response, payload, *, elapsed_ms, replay=False, legacy=None):
         "asset_errors": 0 if replay else sum(issue["code"] in {"asset_provider_error", "asset_record_invalid"} for issue in issues),
         "asset_provider_stats": [] if replay else context.get("provider_stats", []),
         "asset_fallback_replacements": 0 if replay else context.get("fallback_replacements", 0),
-        "llm_enabled": False, "llm_tokens": 0, "llm_cost": 0, "llm_timeouts": 0, "llm_validation_failures": 0,
+        "llm_enabled": llm_enabled, "llm_tokens": None if llm_enabled else 0, "llm_cost": None if llm_enabled else 0,
+        "llm_timeouts": sum(i["code"] == "llm_timeout" for i in issues),
+        "llm_validation_failures": sum(i["code"] == "llm_output_rejected" for i in issues),
         "stale_result_rejected": False,
         "legacy": legacy or None,
         "legacy_score_delta": response.get("risk_score") - old_score if isinstance(old_score, (int, float)) and response.get("risk_score") is not None else None,
@@ -75,7 +77,8 @@ def shadow_metrics(response, payload, *, elapsed_ms, replay=False, legacy=None):
 
 
 class ForecastService:
-    def __init__(self, history, *, config=None, summary_writer: SummaryWriter | None = None):
+    def __init__(self, history, *, config=None, summary_writer: SummaryWriter | None = None,
+                 explanation_config=None, explanation_provider=None):
         self.history = history
         self.config = config or ForecastConfig(store_full_evidence=history.store_full_evidence,
                                                environment=history.environment,
@@ -86,6 +89,8 @@ class ForecastService:
             self.config.sqlite_busy_timeout_ms != history.busy_timeout_ms):
             raise ValueError("History settings and ForecastConfig must agree")
         self.summary_writer = summary_writer
+        self.explanation_config = explanation_config
+        self.explanation_provider = explanation_provider
 
     def assess(self, payload, *, asset_provider=None, asset_providers=None, forecast_as_of=None, evaluation_id=None, legacy=None,
                shadow_context=None):
@@ -106,12 +111,18 @@ class ForecastService:
                 raise ValueError("evaluation_id must be a nonempty string")
             key = content_hash({"input": normalized.input_fingerprint, "versions": metadata["versions"],
                                 "cutoff": cutoff, "evaluation_id": evaluation_id}) if normalized else None
+            if key and self.explanation_config is not None and self.explanation_config.enabled:
+                key = content_hash({"numeric_key": key, "explanation_profile": {
+                    "version": 1, "model": self.explanation_config.model,
+                    "provider": type(self.explanation_provider).__qualname__ if self.explanation_provider is not None else "anthropic"}})
             if key:
                 response = self.history.find(key)
             replay = response is not None
             if response is None:
                 response = build_risk_forecast(payload, config=self.config, asset_provider=asset_provider,
-                                               asset_providers=asset_providers, forecast_as_of=forecast_as_of)
+                                               asset_providers=asset_providers, forecast_as_of=forecast_as_of,
+                                               explanation_config=self.explanation_config,
+                                               explanation_provider=self.explanation_provider)
                 if shadow_context is not None:
                     response["shadow_context"] = shadow_context
                     for field in ("source", "original_triage_id"):
@@ -128,7 +139,8 @@ class ForecastService:
                         self.summary_writer(forecast_summary(response))
                     except Exception as exc:
                         response.setdefault("delivery_issues", []).append({"code": "summary_writer_error", "detail": type(exc).__name__})
-            self.history.record_attempt(shadow_metrics(response, payload, elapsed_ms=(perf_counter() - start) * 1000, replay=replay, legacy=legacy),
+            self.history.record_attempt(shadow_metrics(response, payload, elapsed_ms=(perf_counter() - start) * 1000, replay=replay, legacy=legacy,
+                                                       llm_enabled=self.explanation_config is not None and self.explanation_config.enabled),
                                         response.get("history", {}).get("forecast_id"))
         except (sqlite3.Error, OSError, ValueError, TypeError) as exc:
             error = operational_error("history_or_assessment_error", str(exc), metadata=metadata)

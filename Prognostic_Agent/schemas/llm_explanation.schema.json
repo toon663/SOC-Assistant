@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Closed LLM clause selection; request-specific membership is checked in Python",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_comments"],
+  "properties": {
+    "candidate_comments": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["candidate_id", "comment_ids"],
+        "properties": {
+          "candidate_id": {"type": "string", "pattern": "^candidate_[1-9][0-9]*$"},
+          "comment_ids": {
+            "type": "array", "minItems": 2, "maxItems": 4, "uniqueItems": true,
+            "items": {"enum": ["scope", "transition", "entities", "uncertainty"]},
+            "allOf": [{"contains": {"const": "scope"}}, {"contains": {"const": "transition"}}]
+          }
+        }
+      }
+    }
+  }
+}

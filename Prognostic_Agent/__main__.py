@@ -54,7 +54,10 @@ def main(argv=None):
     parser.add_argument("--asset-timeout-seconds", type=float, default=2)
     parser.add_argument("--enrichment-timeout-seconds", type=float, default=5)
     parser.add_argument("--min-candidate-score", type=float, default=0.5)
-    parser.add_argument("--no-llm", action="store_true", help="Phase 1 always uses deterministic explanations; no SDK or credentials required")
+    llm = parser.add_mutually_exclusive_group()
+    llm.add_argument("--no-llm", action="store_true", help="Deterministic only (the default); no SDK or credentials required")
+    llm.add_argument("--llm-explanation", action="store_true", help="Opt in to bounded, pseudonymized Anthropic explanation selection")
+    parser.add_argument("--llm-model", default="claude-opus-5-5")
     config, metadata, args = None, None, None
     try:
         args = parser.parse_args(argv)
@@ -70,6 +73,12 @@ def main(argv=None):
             store_full_evidence=args.store_full_evidence,
         )
         metadata = provenance(config)
+        explanation_config = None
+        if args.llm_explanation:
+            if args.command != "forecast":
+                raise ValueError("--llm-explanation is supported only for forecast, not report/batch commands")
+            from .llm_explanation import ExplanationConfig
+            explanation_config = ExplanationConfig(enabled=True, model=args.llm_model)
         if args.command == "batch-replay":
             if args.no_history or args.behavioral_score is not None or args.report_environment is not None:
                 raise ValueError("batch-replay requires history and does not accept a global behavioral-score override or report filter")
@@ -115,10 +124,11 @@ def main(argv=None):
         as_of = parse_time(args.as_of) if args.as_of else None
         provider = LocalJSONAssetProvider(args.asset_inventory) if args.asset_inventory else None
         if args.no_history:
-            output = build_risk_forecast(payload, config=config, asset_provider=provider, forecast_as_of=as_of)
+            output = build_risk_forecast(payload, config=config, asset_provider=provider, forecast_as_of=as_of,
+                                         explanation_config=explanation_config)
         else:
             with ForecastHistory(args.history_db, busy_timeout_ms=args.busy_timeout_ms, retention_days=args.retention_days, store_full_evidence=args.store_full_evidence, environment=args.environment) as history:
-                output = ForecastService(history, config=config).assess(payload, asset_provider=provider, forecast_as_of=as_of, evaluation_id=args.evaluation_id)
+                output = ForecastService(history, config=config, explanation_config=explanation_config).assess(payload, asset_provider=provider, forecast_as_of=as_of, evaluation_id=args.evaluation_id)
         encoded = json.dumps(output, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
         if args.output_dir:
             args.output_dir.mkdir(parents=True, exist_ok=True)

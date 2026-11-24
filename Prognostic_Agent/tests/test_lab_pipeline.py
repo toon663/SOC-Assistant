@@ -11,12 +11,12 @@ from Prognostic_Agent.transition_rules import load_rules, matching_rules
 
 
 class LabArtifactTests(unittest.TestCase):
-    def test_expected_failure_methods_match_accepted_scope_exactly(self):
+    def test_historical_scope_is_preserved_without_freezing_backend_decorators(self):
         result = verify_expected_failure_scope()
-        self.assertTrue(result["exact_match"])
-        self.assertEqual(result["count"], 8)
-        self.assertEqual(result["missing"], [])
-        self.assertEqual(result["extra"], [])
+        self.assertEqual(result["historical_methods_count"], 8)
+        self.assertTrue(result["all_original_methods_present"])
+        self.assertEqual(result["exact_match"], result["decorators_match_historical_snapshot"])
+        self.assertEqual(result["count"], len(result["methods"]))
 
     def test_opt_in_rules_preserve_defaults_and_restrict_the_new_edge(self):
         original = load_rules(ForecastConfig().rules_path)

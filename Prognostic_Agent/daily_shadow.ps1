@@ -13,7 +13,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $agentRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $ExporterPath) { $ExporterPath = Join-Path $agentRoot 'private/tools/export_local_context.ps1' }
+if (-not $ExporterPath) { $ExporterPath = Join-Path $agentRoot 'export_local_context.ps1' }
 if (-not $BackendDb) { $BackendDb = Join-Path $agentRoot '../backend/soc_agents.db' }
 $privateRoot = Join-Path $agentRoot 'private'
 $overlayPath = Join-Path $privateRoot 'operator_overlay.json'
@@ -24,6 +24,7 @@ if ($PlanOnly) {
 }
 $runId = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ') + '_' + [Guid]::NewGuid().ToString('N').Substring(0,8)
 $runDir = Join-Path $privateRoot ('daily/' + $runId)
+$dailyStarted = [DateTime]::UtcNow.ToString('o')
 $lockPath = Join-Path $privateRoot 'daily.lock'
 $stage = 'initialization'
 $priorBytecode = $env:PYTHONDONTWRITEBYTECODE
@@ -52,6 +53,9 @@ try {
     New-Item -ItemType Directory -Path $privateRoot -Force | Out-Null
     # Exclusive lock prevents overlapping hand runs from selecting the same work.
     $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    $windowRoot = Join-Path $privateRoot 'activity-windows'
+    New-Item -ItemType Directory -Path $windowRoot -Force | Out-Null
+    [ordered]@{schema_version=1;environment='test';kind='daily_runner';window_id=$runId;host=[Net.Dns]::GetHostName();started_at=$dailyStarted;ended_at=$null} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $windowRoot ($runId + '_daily.json')) -Encoding UTF8
     New-Item -ItemType Directory -Path $runDir | Out-Null
     Push-Location (Split-Path -Parent $agentRoot)
     $pushed = $true
@@ -67,7 +71,11 @@ try {
     } finally { $ErrorActionPreference = $savedPreference }
     if ($exportExit -ne 0) { throw 'Exporter failed; see private exporter logs' }
     $stage = 'importer'
+    $importerStarted = [DateTime]::UtcNow.ToString('o')
     $imported = (Invoke-PrivatePython -Name 'importer' -Arguments @('-m','Prognostic_Agent.import_inventory','--adapter','local_export','--input',$rawPath,'--output-root',(Join-Path $runDir 'imports'),'--environment','test')).Result
+    $windowRoot = Join-Path $privateRoot 'activity-windows'
+    New-Item -ItemType Directory -Path $windowRoot -Force | Out-Null
+    [ordered]@{schema_version=1;environment='test';kind='importer';window_id=($runId + '_importer');host=[Net.Dns]::GetHostName();started_at=$importerStarted;ended_at=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $windowRoot ($runId + '_importer.json')) -Encoding UTF8
     $stage = 'overlay'
     $effective = (Invoke-PrivatePython -Name 'overlay' -Arguments @('-m','Prognostic_Agent.operator_overlay','--inventory',$imported.inventory_path,'--overlay',$overlayPath,'--output-dir',(Join-Path $runDir 'effective-inventory'),'--environment','test')).Result
     $runTime = [DateTime]::UtcNow
@@ -98,6 +106,11 @@ try {
     & $Python -B -m Prognostic_Agent.shadow_batch --record-run-error $failurePath --history-db $historyPath --environment test 1> (Join-Path $runDir 'error_record.stdout.log') 2> (Join-Path $runDir 'error_record.stderr.log')
     throw ('Daily shadow run failed at ' + $stage + '; see ' + $failurePath)
 } finally {
+    if ($lockStream) {
+        $windowRoot = Join-Path $privateRoot 'activity-windows'
+        New-Item -ItemType Directory -Path $windowRoot -Force | Out-Null
+        [ordered]@{schema_version=1;environment='test';kind='daily_runner';window_id=$runId;host=[Net.Dns]::GetHostName();started_at=$dailyStarted;ended_at=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $windowRoot ($runId + '_daily.json')) -Encoding UTF8
+    }
     if ($pushed) { Pop-Location }
     if ($lockStream) { $lockStream.Dispose() }
     $env:PYTHONDONTWRITEBYTECODE = $priorBytecode

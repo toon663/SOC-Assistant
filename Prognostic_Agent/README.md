@@ -1,8 +1,8 @@
-# Prognostic Agent — Phases 1 and 2
+# Prognostic Agent — Phases 1, 2 and 3
 
 Standalone FORECAST agent: Analyst-correlated alert -> asset context -> technical
 impact -> conditional ATT&CK paths -> structured forecast for the Analyst/BI handoff.
-Python 3.10+ standard library only. Importing the package performs no I/O.
+Deterministic mode uses the Python 3.10+ standard library only. Importing the package performs no I/O.
 
 ## Run and verify
 
@@ -21,8 +21,9 @@ otherwise the CLI records forecasts and shadow attempts in the agent-owned datab
 The default `forecast_as_of` is current UTC; historical examples naturally become
 stale unless replayed with `--as-of`. No administrator access or API keys needed.
 
-There is no LLM code, SDK dependency, or network access. `--no-llm`
-is accepted explicitly; deterministic explanations are always used.
+LLM explanation is **off by default**. `--no-llm` makes that explicit. Disabled
+mode has no SDK, credentials, log writes or network dependency. The optional
+Phase 3 explanation layer is described at the end of this README.
 
 ## Python interface
 
@@ -107,7 +108,7 @@ Every forecast, validation error, operational error and CLI report includes
 `schema_version`, `agent_version`, `config_version`, and `versions` with config,
 rule and weight versions/hashes. An unreadable or unversioned artifact has a null
 version plus a `provenance_issues` entry, never an invented version. Current agent
-version is 0.2.8 and config version is 3. Use `--rules-path` / `--weights-path` to
+version is 0.2.9 and config version is 3. Use `--rules-path` / `--weights-path` to
 select alternate versioned artifacts. The engine preserves loaded artifact hashes.
 
 ## Analyst-to-Prognostic adapter
@@ -459,7 +460,8 @@ ATT&CK path differences use `legacy.attack_path`. BI/playbook differences are on
 recorded if supplied, never executed. Outcome-window/coverage/intervention fields
 exist from day one with unknown values; no negatives or predictive accuracy are
 inferred from absent follow-up. Shadow summaries provide counts and p50/p95/p99
-latency. LLM metrics are zero/disabled in this phase.
+latency. Disabled LLM metrics remain zero. Enabled calls report timeout/rejection
+counts; token usage and cost are null when unavailable, never guessed.
 
 Unsupported reports group no-outgoing-rule/platform gaps by technique/reason and
 include durable unique assessment counts, distinct alert counts, first/last ingestion time,
@@ -1138,6 +1140,18 @@ No raw real event is copied into README or test fixtures.
 
 ## Re-triage replay of retained incident evidence
 
+`--causal` evaluates each original incident at its last retained event timestamp.
+For that mode only, recorded hosts receive explicit `source: operator_replay`
+normal-criticality assumptions at the cutoff. Future observed inventory is
+excluded, not backdated: privilege, platform, exposure and relationships stay
+unknown. Per-incident inventories are private and do not change live inventory.
+`--cohort-report <private previous replay JSON>` fixes the original triage ID set
+when the source database has gained incidents since the earlier replay.
+Reports include redacted host matching, per-verdict host/incident counts and
+per-incident rule/guard/candidate/impact diagnostics. The adapter maps empty,
+whitespace, dash and the specified IPv4/IPv6 loopback source-IP placeholders to
+null at incident and event level; valid supplied addresses are preserved.
+
 ```powershell
 # Use a freshly exported local_context_raw.v1 file from the local-export runbook.
 python -B -m Prognostic_Agent.retriage_replay --backend-db backend/soc_agents.db --raw-export $rawPath --operator-overlay Prognostic_Agent/private/operator_overlay.json --environment test
@@ -1222,19 +1236,321 @@ plus newly ingested evidence, then updates count/first-seen/last-seen and saves.
 An exact already-ingested record ID is skipped instead. These are source-code
 facts, not proof that an old stored repeat was processed by the latest code.
 
-## Next review gate
+## Controlled PowerShell capture procedure (operator-run only)
 
-Phases 1 and 2 are implemented. Stop for user review before Phase 3.
+Failed-logon testing and disposable-account testing are cancelled. Do not run
+either. No T1087/T1069 transitions or consequence field are enabled. Optional
+Phase 3 explanation remains off unless explicitly requested for a forecast.
+`controlled_powershell_test.ps1` is written but was NOT executed by the agent.
+It asks for the exact confirmation `RUN PROGNOSTIC CONTROLLED TEST`, then starts
+one hidden Windows PowerShell child. Its entire decoded payload is
+`Write-Output 'prognostic-controlled-test'`. The child receives `-EncodedCommand`,
+`-WindowStyle Hidden`, `-ExecutionPolicy Bypass`, `-NoProfile` and `-NonInteractive`.
+The script does not call registry, credential, LSASS, network or Defender APIs.
+Only private window/output files are written. Cancelling starts no child.
 
-Phase 3: optional LLM explanation with a configurable ten-second default deadline,
-strict candidate/evidence reference validation, no score/ranking/structure changes,
-and deterministic fallback. Disabled operation must remain fully functional.
-Enabling an SDK will not be required for the core CLI or library.
+### Audit observation and optional enable/revert commands
 
-Future ML training requires timestamped sequence/outcome data and historical
-asset snapshots, not static malware labels. Evaluate candidate recall and top-k
-quality separately; fit probability calibration on held-out outcomes, split by
-time and incident/campaign. Account for interventions and incomplete observation.
+The read-only inspection found the command-line audit registry value absent
+(not configured). Effective Process Creation audit policy and recent Security
+records could not be read: Windows returned privilege-not-held even outside the
+sandbox. Process Creation auditing is therefore **unverified**, not reported off.
+Microsoft documents that an unconfigured command-line policy leaves command
+lines out of 4688: https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-admx-auditsettings
 
-Backend integration, changes to existing agents, and automatic response behavior
-are outside this implementation authorization.
+The previous instructions were incomplete: `auditpol /backup` does not save
+registry values, and deleting the command-line value on revert assumed its prior
+state. Use the operator-only helper below instead. These commands were NOT run.
+
+From an **elevated PowerShell**, at the repository root:
+
+```powershell
+# Choose a new private directory. Backup refuses to overwrite an existing one.
+$backup = Join-Path (Get-Location) ('Prognostic_Agent/private/audit-backups/' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ'))
+# Read/save both settings first; no audit or registry settings are changed here.
+powershell.exe -NoProfile -File Prognostic_Agent/audit_settings.ps1 -Action Backup -BackupDirectory $backup
+if ($LASTEXITCODE -ne 0) { throw 'Backup failed; stop' }
+# Only when you choose to enable capture:
+powershell.exe -NoProfile -File Prognostic_Agent/audit_settings.ps1 -Action Enable -BackupDirectory $backup
+if ($LASTEXITCODE -ne 0) { throw 'Enable failed; inspect and restore using the saved backup' }
+# Later, use EXACTLY the same backup directory, even from a new shell:
+powershell.exe -NoProfile -File Prognostic_Agent/audit_settings.ps1 -Action Restore -BackupDirectory $backup
+if ($LASTEXITCODE -ne 0) { throw 'Restore failed; retain the backup and inspect' }
+```
+
+Backup saves the current process-creation success/failure flags and registry
+value existence, type and value in `settings.clixml`, plus a full audit-policy CSV
+for reference. Restore reads that saved state: it restores only the process-
+creation subcategory's success/failure settings, and reinstates the original
+registry value/type or original absence. It does not restore unrelated audit
+subcategories from the full CSV or assume disabled auditing/absent registry values.
+A registry key created during Enable may remain empty after Restore; its setting
+value returns to its original absence. Keep the saved directory until restoration
+succeeds. Operations require elevation and stop on errors; the two-setting update
+is not atomic, so an interrupted Enable can require an explicit Restore. Domain
+policy may reapply settings later. Command-line capture applies to all audited
+processes while enabled. Neither the checker nor daily runner invokes this helper.
+
+Microsoft documents the audit-policy-only scope of
+[auditpol backup](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/auditpol-backup).
+
+Before generating any test event, run this **read-only** check from elevated
+PowerShell (it does not enable settings or start the backend):
+
+```powershell
+python -B -m Prognostic_Agent.controlled_check --preflight
+```
+
+It prints whether process-creation success auditing and command-line capture are
+on, whether both are on, Security log maximum/current file bytes, record count,
+and the backend listener's start time relative to `backend/analyst.py` as a boolean.
+File usage is allocated log file bytes, not occupied event-record bytes. Denied
+access and unknown/missing/ambiguous backend listeners are explicitly unverified.
+No usernames, hostnames, addresses, PIDs or command lines are printed. The native
+audit query uses the subcategory GUID, avoiding localized `auditpol` text parsing.
+
+With a completed `--window`, the check queries raw Security 4688 XML for the exact
+encoded payload and time window. It reports one failing capture stage:
+`no_4688_in_security_log` (no matching controlled event retained),
+`no_incident_ingested` (matching Security event but no stored incident), or
+`incident_with_no_technique` (stored incident lacks required T1059.001).
+Unreadable Security logs produce an inconclusive diagnosis rather than a false
+missing-event claim. A matching incident with a technique but no forecast reports
+`not_in_this_batch`; that is an assessment gap, not one of the three capture failures.
+A retained incident takes precedence over a subsequently rotated Security log.
+
+### Capture and check
+
+1. Stop the old backend in its owning terminal (Ctrl+C) and restart it so the
+   current Analyst module is imported. Neither repository launcher uses reload.
+   For this controlled session, use the following manual launch to keep external
+   LLM review off and response approval required; the launchers currently set
+   LLM review to auto. Run in a separate Administrator PowerShell:
+
+   ```powershell
+   $env:SOC_LLM_TRIAGE = 'off'
+   $env:SOC_REQUIRE_HUMAN_APPROVAL = '1'
+   cd backend
+   python -B -m uvicorn api:app --host 127.0.0.1 --port 8000
+   ```
+
+2. Enable the existing backend's normal ingestion before the test. Do not approve
+   response actions for this inert test. From another repository-root terminal:
+
+   ```powershell
+   $rawPath = Join-Path (Get-Location) ('Prognostic_Agent/private/controlled-inputs/local_' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ') + '.json')
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Prognostic_Agent/export_local_context.ps1 -OutputPath $rawPath
+   python -B -m Prognostic_Agent.import_inventory --adapter local_export --input $rawPath --environment test
+   # Substitute the inventory_path returned by the importer:
+   python -B -m Prognostic_Agent.operator_overlay --inventory RETURNED_PRIVATE_INVENTORY_PATH --overlay Prognostic_Agent/private/operator_overlay.json --output-dir Prognostic_Agent/private/controlled-effective-UNIQUE_RUN --environment test
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Prognostic_Agent/controlled_powershell_test.ps1
+   ```
+
+   Confirm the private overlay still says normal for this host. The test script
+   records its own start/end time, host, child PID and exact encoded payload in
+   `private/activity-windows/`. No collector runs from the controlled script.
+
+3. Wait for an existing ingestion poll or use the existing manual collection UI.
+   Select the most recent completed controlled-test window privately, then check:
+
+   ```powershell
+   $window = Get-ChildItem Prognostic_Agent/private/activity-windows/*.json | Sort-Object LastWriteTimeUtc -Descending | Where-Object { (Get-Content $_.FullName -Raw | ConvertFrom-Json).kind -eq 'controlled_test' } | Select-Object -First 1
+   python -B -m Prognostic_Agent.controlled_check --window $window.FullName
+   ```
+
+   A zero match is not success. Check audit policy, ingestion and command-line
+   preservation before continuing. No sleeping loop or watcher is installed.
+
+4. Assess fresh ingested incidents, using a second fresh inventory export inside
+   the daily runner, then select its most recent summary:
+
+   ```powershell
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File Prognostic_Agent/daily_shadow.ps1 -FreshOnly
+   $daily = Get-ChildItem Prognostic_Agent/private/daily/*/daily_summary.json | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+   python -B -m Prognostic_Agent.controlled_check --window $window.FullName --daily-summary $daily.FullName
+   ```
+
+   The check matches the exact encoded payload, host and event-time window using
+   a disposable read-only database copy. It prints redacted incident aliases,
+   behavioral_score/technique_evidence presence, T1059.001 presence, forecast
+   status, reason, path, risk, unresolved guards/prerequisites and issue codes.
+   A fresh incident should carry both additive fields and T1059.001 if the
+   PowerShell logic actually ran on captured command-line evidence. The full
+   three-indicator command scores 45+15+15+10=85 in the current process-creation
+   branch, which can label this inert command malicious; no intent is inferred.
+   Missing fields/technique or absent ingestion is a failed demonstration.
+
+5. As an additional restart check, in Administrator PowerShell compare the
+   listening process's start time to the Analyst source timestamp; print only
+   the boolean, not identifiers:
+
+   ```powershell
+   $listener = Get-NetTCPConnection -LocalPort 8000 -State Listen | Select-Object -First 1
+   $backendProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)"
+   [pscustomobject]@{StartedAfterAnalystEdit=($backendProcess.CreationDate.ToUniversalTime() -gt (Get-Item backend/analyst.py).LastWriteTimeUtc)}
+   ```
+
+   A later start supports the restart check; it does not alone attest to source
+   bytes. Use the fresh controlled incident's additive fields and technique
+   attribution as the functional check. Merely observing pre-existing records
+   does not prove that the new code is loaded.
+
+### Data path and known capture limitations
+
+`Event_Gatherer/gatherer.collect_log()` reads Security records without excluding
+4688, stores property values in `eventData`, and renders `message` through
+`FormatDescription()`. The Sentinel detector retains the message; backend
+`windows_ingest.anomaly_to_event()` copies it into SecurityEvent. Analyst
+`RULES[(security,4688)] -> triage_process_creation -> message_field('Process
+Command Line') -> _score_command -> COMMAND_INDICATORS` recognizes the encoded,
+hidden and bypass flags and attributes T1059.001 to the event. It does not read
+the named XML CommandLine field directly. Missing/localized rendered message
+fields can therefore prevent detection, even if raw property values were read.
+The ingest routine-process filter must also admit the event. The current
+Sentinel message pattern for PowerShell is narrower than Analyst's (it expects
+`powershell -enc`); English token-elevation text can independently match the
+privilege pattern. End-to-end admission is to be observed, not assumed.
+
+### Report-only provenance tags
+
+The instrumented export wrapper and daily runner record start/end windows under
+`private/activity-windows/`. The daily runner also records importer intervals.
+Weekly reporting assigns `possible_self_generated` on same-host incident-span
+overlap, and `controlled_test` on controlled-test overlap. These are associations,
+not proof of process ancestry; unrelated activity in the same window can overlap.
+All `debug-003` and `manual-*` event-containing incidents get `test_data` in
+reports only. All three categories are shown in `separated_activity` and excluded
+from primary counts/rates, while raw stored verdicts and scores are unchanged.
+Tags can overlap and category counts must not be summed as distinct incidents.
+
+Run `python -B -m Prognostic_Agent.activity_tags --backend-db backend/soc_agents.db --history-db Prognostic_Agent/private/shadow/forecast_history.db`
+to refresh report metadata for already handled source incidents without replaying
+or modifying the backend. Weekly reports also resolve closed windows dynamically
+from retained forecast evidence references. Re-run the report after a runner
+finishes to include its completed full-run window. Interrupted/unclosed windows
+are not treated as completed evidence.
+
+The five historical enumeration records fall inside an inferred exporter window
+reconstructed from the raw collection timestamp and file-completion time.
+Their caller is WmiPrvSE.exe; parent ancestry was not retained. The supplied
+exporter also queries Win32_UserAccount with CIM, consistent with that caller.
+This supports possible self-generation, not confirmed parentage. Importer starts
+after that interval, so these records are not attributed to importer collection.
+
+The old approval-scope check froze eight expected-failure decorators. Backend now
+leaves the re-ingestion/denial audit test undecorated; all eight original methods
+remain. Prognostic's historical report remains immutable, but current decorator
+drift is reported instead of aborting the unrelated lab. Backend was not changed.
+
+## Phase 3: optional explanation selection
+
+Implemented and disabled by default. The watcher, consequence field, and new
+T1087/T1069 rules remain out of scope. The daily runner and all replay/demo
+commands continue deterministic-only. No controlled test or audit setting is
+invoked by this layer.
+
+The provider is **Anthropic**, using the same `anthropic.Anthropic` SDK and default
+model string **`claude-opus-5-5`** found in `backend/llm_analyst.py`. The backend class
+is not imported: its triage tools, raw evidence, 120-second timeout and SDK retries
+are unsuitable here. The separate `ExplanationConfig` setting does not change
+`SOC_LLM_TRIAGE` or numeric `ForecastConfig`/config hashes. The SDK reads credentials
+from its normal credential chain, normally `ANTHROPIC_API_KEY` inherited by the
+Python process. The backend comments also mention an `ant auth login` profile;
+this agent does not read profiles itself or guarantee support in every installed
+SDK version. Missing credentials, SDK or inaccessible model produce deterministic
+fallback. No provider/model availability has been tested with a live call.
+
+Optional installation, only if you choose to enable real provider calls:
+`python -m pip install anthropic`. It is deliberately absent from required
+requirements. Tests and the comparison use an injected fake provider, no SDK or
+network. SDK API/auth reference:
+https://github.com/anthropics/anthropic-sdk-python .
+
+Explicit CLI opt-in (this command would make an external call; it was NOT run):
+
+```powershell
+python -B -m Prognostic_Agent --input Prognostic_Agent/examples/analyst_alert.json --asset-inventory Prognostic_Agent/assets/sample_asset_inventory.json --as-of 2026-11-23T12:00:00Z --environment test --no-history --llm-explanation --llm-model claude-opus-5-5
+```
+
+Python callers pass `explanation_config=ExplanationConfig(enabled=True)` to
+`build_risk_forecast` or `ForecastService`. Providers implement
+`complete(request, *, deadline, attempt)` and must be importable/picklable for
+Windows spawn. `explanation_provider` is an injection point for offline tests.
+Disabled mode returns before provider creation, logging or credential/SDK access.
+The existing numeric engine is unchanged; agent code version is 0.3.0.
+
+### Enforced explanation boundary
+
+An unrestricted paragraph cannot be mechanically proven free of new claims.
+Instead, the model selects/orders approved clauses for **every existing
+candidate**. Its entire accepted output is:
+
+```json
+{"candidate_comments":[{"candidate_id":"candidate_1","comment_ids":["scope","transition","entities","uncertainty"]}]}
+```
+
+Candidate references and clause IDs are checked against that exact request.
+Missing/duplicate/new candidates, unknown clauses, prose, numbers or any extra
+field (including scores, paths, techniques, status, reason or entities) reject
+the whole output. Scope and transition clauses are mandatory. The caller renders
+these approved clauses with the original candidate/evidence references and
+locally restores aliases. This permits presentation refinement, not novel
+free-form security reasoning or new facts.
+
+Successful calls change only `explanation` and `explanation_status=llm`.
+Rejected/failed/timed-out calls retain the exact deterministic explanation,
+set `explanation_status=deterministic`, and append a redacted issue:
+`llm_output_rejected`, `llm_provider_error`, `llm_timeout`,
+`llm_privacy_skipped` or `llm_audit_unavailable`. They never alter risk/likelihood,
+`numeric_assessment_status`, status, reason, candidate order, selected path,
+entities, techniques or abstention. No candidates means no call.
+
+### Deadline and privacy
+
+One monotonic **10-second total budget** covers preparation, attempted-send
+logging, spawn, provider import/call, retries and validation. A smaller positive
+budget may be configured for tests; budgets above ten seconds are rejected.
+At most two attempts share this deadline. SDK retries are disabled. Each call
+runs in a spawned child; an uncooperative child is terminated, with cleanup time
+reserved inside the budget. No background provider thread continues after timeout.
+
+Only a closed projection is sent: opaque candidate aliases, existing ATT&CK IDs,
+prewritten clauses and stable entity aliases. User/host/service/SID/IP identities
+are pseudonymized locally; names embedded inside longer strings use longest-first
+substring replacement. The mapping is per request, stays in the parent process,
+and is never logged/sent. Raw messages, command lines, event IDs, incident IDs,
+asset owners, arbitrary metadata, scores and timestamps are never projected.
+Unrepresentable identifiers, unresolved entity bindings, alias collisions or a
+failed final identity scan skip the call. Restored identities appear only in the
+local explanation, as they already do in the local forecast.
+
+Before each attempt, the exact SDK application request (model, max_tokens, system
+prompt and user message), its hash and privacy audit are written exclusively to
+`private/llm-payloads/<uuid>.json`, or a configured private audit directory. Failure
+to log prevents the call. This is an **attempted-send journal**, not evidence the
+provider received it; delivery acknowledgements and HTTP authorization headers
+are not logged. Provider exception messages and rejected model output are not
+logged, since they may contain secrets. `audit_logged_payloads` verifies the
+closed request structure, hashes and an optional identity/content denylist.
+The journal has no alias mapping or raw endpoint evidence. These private files
+are separate from forecast-history retention; preserve/remove them according to
+your operator log-retention policy.
+
+Enabled history assessments use a separate explanation-profile identity; the
+disabled key algorithm is unchanged (normal agent-version provenance still changes
+across releases). Idempotent replay returns the saved result
+without another provider call. Use a new evaluation ID for an intentional retry
+of a previously persisted deterministic fallback.
+
+### Offline verification and review artifacts
+
+```powershell
+python -B -m unittest Prognostic_Agent.tests.test_llm_explanation -v
+python -B -m Prognostic_Agent.llm_explanation_demo
+```
+
+The fake-provider demo writes disabled/fake JSON, a full unified explanation diff,
+a comparison and payload privacy audit under a new `private/phase3-review/` run.
+It asserts byte equality of all non-explanation fields, with identical scores,
+status/reason, numeric completeness, paths and diagnostics. Nothing is run on
+real endpoint events and no external call occurs.

@@ -17,6 +17,7 @@ from .contracts import parse_time, utc_text
 from .private_paths import PRIVATE_DIR, private_path, write_private
 from .shadow_batch import SHADOW_HISTORY
 from .payload_categories import LEGACY
+from .activity_tags import TAGS, classify_activity
 from .storage import storage_time
 
 TIMEZONE = "America/Los_Angeles"
@@ -72,12 +73,29 @@ def build_weekly_report(history_path=SHADOW_HISTORY, *, week_start=None, now=Non
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         categories = {row["assessment_key"]: json.loads(row["missing_fields_json"]) for row in connection.execute(
             "SELECT assessment_key,missing_fields_json FROM shadow_payload_categories WHERE environment='test' AND category=?", (LEGACY,))} if "shadow_payload_categories" in tables else {}
+        report_tags = {row["assessment_key"]: json.loads(row["tags_json"]) for row in connection.execute("SELECT assessment_key,tags_json FROM shadow_report_tags WHERE environment='test'")} if "shadow_report_tags" in tables else {}
     finally:
         connection.close()
     statuses, reasons, abstention_reasons = Counter(), Counter(), Counter()
     unsupported = defaultdict(lambda: {"alerts": set(), "forecasts": set(), "reasons": defaultdict(set)})
     outcomes, errors = [], {"validation_error": [], "operational_error": []}
     replay_outcomes = []
+    separated = {tag: [] for tag in TAGS}
+
+    def tagged_outcome(response, identity, created_at, unit):
+        item = outcome(response, identity=identity, created_at=created_at, unit=unit)
+        context = response.get("shadow_context") or {}
+        activity = report_tags.get(context.get("assessment_key"), context.get("activity") or {})
+        hosts = [e["entity_id"].removeprefix("host:") for e in response.get("blast_radius", {}).get("observed_entities", []) if e.get("entity_type") == "host"]
+        evidence = response.get("evidence_references", [])
+        dynamic = classify_activity({"events": [{"event_id": ref["event_id"], "timestamp": ref["timestamp"], "host": host} for ref in evidence for host in (hosts or [""])]})
+        activity = {"tags": sorted(set(activity.get("tags", [])) | set(dynamic["tags"])),
+                    "window_ids": sorted(set(activity.get("window_ids", [])) | set(dynamic["window_ids"]))}
+        item["activity"] = activity
+        for tag in activity.get("tags", []):
+            if tag in separated:
+                separated[tag].append(item)
+        return item, bool(activity.get("tags"))
     legacy = {}
     legacy_prior_forecasts = legacy_prior_validation = 0
 
@@ -100,8 +118,11 @@ def build_weekly_report(history_path=SHADOW_HISTORY, *, week_start=None, now=Non
         response = json.loads(row["response_json"])
         if response["response_type"] != "risk_forecast":
             raise ValueError("Non-forecast found in forecasts table")
+        tagged, exclude = tagged_outcome(response, row["forecast_id"], row["created_at"], "forecast")
         if response.get("source") == "retriage_replay" or (response.get("shadow_context") or {}).get("source") == "retriage_replay":
-            replay_outcomes.append(outcome(response, identity=row["forecast_id"], created_at=row["created_at"], unit="forecast"))
+            replay_outcomes.append(tagged)
+            continue
+        if exclude:
             continue
         if collect_legacy(response, row["forecast_id"], row["created_at"]):
             legacy_prior_forecasts += 1
@@ -120,9 +141,15 @@ def build_weekly_report(history_path=SHADOW_HISTORY, *, week_start=None, now=Non
     for row in attempts:
         metrics = json.loads(row["metrics_json"])
         kind = metrics["response_type"]
+        if kind in {LEGACY, "validation_error", "operational_error"}:
+            tagged, exclude = tagged_outcome(metrics, row["attempt_id"], row["created_at"], "error_attempt")
+        else:
+            exclude = False
         if metrics.get("source") == "retriage_replay" or (metrics.get("shadow_context") or {}).get("source") == "retriage_replay":
             if kind in {"validation_error", "operational_error"}:
                 replay_outcomes.append(outcome(metrics, identity=row["attempt_id"], created_at=row["created_at"], unit="error_attempt"))
+            continue
+        if exclude:
             continue
         if kind == LEGACY or kind == "validation_error":
             if collect_legacy(metrics, row["attempt_id"], row["created_at"]):
@@ -150,6 +177,7 @@ def build_weekly_report(history_path=SHADOW_HISTORY, *, week_start=None, now=Non
             "assessment_category_counts": {"risk_forecast": denominator, "validation_error": len(errors["validation_error"]),
                                            "operational_error": len(errors["operational_error"]), **({LEGACY: len(legacy)} if include_legacy else {})},
             "reported_outcome_count": len(all_outcomes),
+            "separated_activity": {tag: {"count": len(items), "items": items, "excluded_from_primary_rates": True} for tag, items in separated.items()},
             "retriage_replay": {"source": "retriage_replay", "excluded_from_primary_counts": True,
                                 "forecast_count": sum(item["unit"] == "forecast" for item in replay_outcomes),
                                 "original_triage_count": len({item["original_triage_id"] for item in replay_outcomes if item["original_triage_id"]}),
