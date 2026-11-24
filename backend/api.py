@@ -18,6 +18,7 @@ from file_scan import ScanUnavailable
 from gatherer import gather_security_events
 from integrations import IntegrationHub
 from live_detection import LiveDetector
+from security_log import gather_security_events
 from llm_analyst import ClaudeAnalyst, ReviewWorker
 from windows_ingest import DEFAULT_THRESHOLD, IngestUnavailable, WindowsIngestService
 
@@ -250,9 +251,14 @@ def create_app():
         events = pipeline.sentinel.inspect_computer(batch)
         incident = None
         if events:
-            incident = pipeline.run(events, approved=False)
-            repository.save_incident(incident)
-            incident = incident_to_dict(incident)
+            # A repeat scan must not overwrite an incident a human already decided.
+            stored = repository.get_incident(pipeline.sentinel.detect_anomaly(events).incident_id)
+            if stored and stored.get("action_result", {}).get("status") not in {None, "open", "approval_required"}:
+                incident = annotate(stored)
+            else:
+                run = pipeline.run(events, approved=False)
+                repository.save_incident(run)
+                incident = annotate(incident_to_dict(run))
         return {
             "snapshot": asdict(batch),
             "anomalies": [event.metadata for event in events],
@@ -283,6 +289,10 @@ def create_app():
                 )
                 for item in raw_events
             ]
+            # Re-sent events must not overwrite an incident a human already decided.
+            stored = repository.get_incident(pipeline.sentinel.detect_anomaly(events).incident_id)
+            if stored and stored.get("action_result", {}).get("status") not in {None, "open", "approval_required"}:
+                return annotate(stored)
             incident = pipeline.run(events, approved=False)
             queued = reviews is not None and reviews.mark_pending(incident)
             repository.save_incident(incident)
@@ -311,6 +321,36 @@ def create_app():
         if incident is None:
             raise HTTPException(status_code=404, detail="incident not found")
         return annotate(incident)
+
+    @app.post("/incidents/{incident_id}/decision")
+    def decide_incident(incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Human verification gate: approve runs the Orchestrator's plan; deny sends it back for re-triage."""
+        decision = payload.get("decision")
+        reviewer = payload.get("reviewer")
+        reason = payload.get("reason")
+        if not isinstance(decision, str) or decision not in {"approve", "deny"}:
+            raise HTTPException(status_code=422, detail="decision must be approve or deny")
+        if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 200:
+            raise HTTPException(status_code=422, detail="reviewer must contain 1 to 200 characters")
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 2000:
+            raise HTTPException(status_code=422, detail="reason must contain 1 to 2000 characters")
+        try:
+            return annotate(repository.update_pending_incident(
+                incident_id,
+                lambda incident: pipeline.orchestrator.review_response(incident, decision, reviewer, reason),
+            ))
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/orchestrator/status")
+    def orchestrator_status() -> dict[str, Any]:
+        """Whether the trained response model is loaded, and how many analyst decisions it has learned from."""
+        model = pipeline.orchestrator.model
+        if model is None:
+            return {"model_loaded": False, "decided_by": "rules_fallback"}
+        return {"model_loaded": True, "decided_by": "model", **model.info, "thresholds": model.thresholds}
 
 
 

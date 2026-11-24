@@ -17,6 +17,7 @@ class PolicyConfig:
             ActionType.ISOLATE_ENDPOINT,
             ActionType.DISABLE_USER,
             ActionType.BLOCK_IP,
+            ActionType.QUARANTINE_FILE,
         }
     )
     minimum_confidence_for_approval: float = 60.0
@@ -47,7 +48,7 @@ class PolicyEngine:
         if action in self.config.prohibited_actions:
             return self._deny(request, "action is prohibited by policy")
 
-        if action in {ActionType.ISOLATE_ENDPOINT, ActionType.DISABLE_USER, ActionType.BLOCK_IP}:
+        if action in {ActionType.ISOLATE_ENDPOINT, ActionType.DISABLE_USER, ActionType.BLOCK_IP, ActionType.QUARANTINE_FILE}:
             if request.target.strip().lower() in {"unknown", "none", "null", "*"}:
                 return self._deny(request, "dangerous action requires a specific target")
             if request.risk_score < self.config.minimum_risk_for_approval:

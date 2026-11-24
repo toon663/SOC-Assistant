@@ -6,8 +6,9 @@ The workflow follows the sequence shown in the architecture diagram:
 2. Analyst Agent: enrich context, correlate, deduplicate, and triage risk.
 3. Prognostic Agent: request threat intelligence and forecast the risk path.
 4. BI Agent: estimate business impact and update operational metrics.
-5. Orchestrator Agent: select a playbook, request approval when needed,
-   initiate a response, and validate the resulting state.
+5. Orchestrator Agent: a trained model (orchestrator_model.py) scores each
+   response action; policy-checked actions wait at the human verification gate,
+   then run and are validated. Human decisions train the model further.
 
 This module uses standard-library Python only. Replace the demo adapters with
 real SIEM, EDR, identity, threat-intelligence, and ticketing integrations.
@@ -22,12 +23,17 @@ from typing import Any, Dict, Iterable, List, Optional, Protocol
 import hashlib
 import ipaddress
 import json
+import logging
 import math
 import re
 
 from analyst import RelatedEvent, triage
 from anomaly import detect_anomalies
-from gatherer import SecurityLogBatch
+from models import ActionRequest, ModelValidationError
+from orchestrator_model import ResponseModel, record_feedback
+from playbooks import ACTIONS, KNOWN_PLAYBOOKS, NAMED_PLAYBOOKS, RESPONSE_ACTIONS, build_plan, incident_risk, steps_to_actions, targets_for
+from policy_engine import PolicyEngine
+from security_log import SecurityLogBatch
 
 
 def utc_now() -> str:
@@ -86,6 +92,8 @@ class Incident:
     business_impact: Dict[str, Any] = field(default_factory=dict)
     response_options: List[Dict[str, Any]] = field(default_factory=list)
     selected_playbook: Optional[str] = None
+    # The Orchestrator's plan: route, deciding score, policy-checked steps.
+    response_plan: Dict[str, Any] = field(default_factory=dict)
     action_result: Dict[str, Any] = field(default_factory=dict)
     metrics: Dict[str, Any] = field(default_factory=dict)
     audit_log: List[Dict[str, Any]] = field(default_factory=list)
@@ -108,6 +116,10 @@ class ExternalSystems(Protocol):
     def isolate_endpoint(self, host: Optional[str]) -> Dict[str, Any]: ...
 
     def disable_user(self, user: Optional[str]) -> Dict[str, Any]: ...
+
+    def block_ip(self, source_ip: Optional[str]) -> Dict[str, Any]: ...
+
+    def quarantine_file(self, host: Optional[str], file: Optional[str]) -> Dict[str, Any]: ...
 
 
 class DemoExternalSystems:
@@ -146,6 +158,12 @@ class DemoExternalSystems:
 
     def disable_user(self, user: Optional[str]) -> Dict[str, Any]:
         return {"action": "disable_user", "target": user, "status": "simulated"}
+
+    def block_ip(self, source_ip: Optional[str]) -> Dict[str, Any]:
+        return {"action": "block_ip", "target": source_ip, "status": "simulated"}
+
+    def quarantine_file(self, host: Optional[str], file: Optional[str]) -> Dict[str, Any]:
+        return {"action": "quarantine_file", "target": file, "host": host, "status": "simulated"}
 
 
 class SentinelAgent:
@@ -373,18 +391,38 @@ class BIAgent:
         return incident
 
 
+_AUTO = object()
+
+
 class OrchestratorAgent:
-    """Create a ticket, match a playbook, and execute approved actions."""
+    """Evaluate response actions with a trained model and start the approved ones.
+
+    ``response_model`` (orchestrator_model.py) scores every response action. The
+    PolicyEngine checks each step when it is proposed and again before it runs,
+    and the human verification gate approves or rejects the plan. Every human
+    decision is also a training example: approved plans are reinforced, rejected
+    actions are suppressed, and a rejected incident goes back for re-triage.
+    """
 
     name = "orchestrator"
+    OK_STATUSES = {"simulated", "success", "succeeded", "completed", "isolated", "disabled", "blocked", "quarantined"}
 
-    def __init__(self, systems: ExternalSystems, require_approval: bool = True):
+    def __init__(
+        self,
+        systems: ExternalSystems,
+        require_approval: bool = True,
+        policy: Optional[PolicyEngine] = None,
+        response_model: Any = _AUTO,
+        learn_from_decisions: bool = True,
+    ):
         self.systems = systems
         self.require_approval = require_approval
+        self.policy = policy or PolicyEngine()
+        self.model: Optional[ResponseModel] = ResponseModel.load() if response_model is _AUTO else response_model
+        self.learn_from_decisions = learn_from_decisions
 
     def create_risk_report(self, incident: Incident) -> Incident:
         ticket_id = incident.alert.get("ticket_id") or self.systems.create_ticket(incident)
-        incident.response_options = self._response_options(incident)
         incident.alert["ticket_id"] = ticket_id
         incident.record(self.name, "send_risk_report", ticket_id=ticket_id)
         return incident
@@ -392,11 +430,32 @@ class OrchestratorAgent:
     def evaluate_and_respond(
         self, incident: Incident, approved: bool = False
     ) -> Incident:
-        incident.selected_playbook = self._select_playbook(incident)
+        scores = features = None
+        if self.model is not None:
+            try:
+                features = self.model.features(incident)
+                scores = self.model.score(incident)
+            except Exception:  # never leave an incident without a plan
+                logging.getLogger(__name__).exception("Orchestrator model failed; using rule thresholds")
+                scores = features = None
+        plan = build_plan(
+            incident, self.policy, scores,
+            self.model.thresholds if scores is not None else None,
+            self.model.info if scores is not None else None,
+        )
+        if features is not None:
+            plan["features"] = features
+        incident.response_options = plan.pop("options")
+        incident.response_plan = plan
+        incident.selected_playbook = plan["playbook"]
         incident.record(
             self.name,
             "evaluate_response_options",
+            decided_by=plan["decided_by"],
             selected_playbook=incident.selected_playbook,
+            scores={option["action"]: option["probability"] for option in incident.response_options},
+            steps=[step["action"] for step in plan["steps"]],
+            dropped_steps=[{"action": s["action"], "reason": s["policy"]["reason"]} for s in plan["dropped_steps"]],
         )
 
         if self.require_approval and not approved:
@@ -407,12 +466,12 @@ class OrchestratorAgent:
             incident.record(self.name, "pause_for_approval")
             return incident
 
-        return self._execute_playbook(incident)
+        return self._execute_plan(incident)
 
     def review_response(
         self, incident: Incident, decision: str, reviewer: str, reason: str
     ) -> Incident:
-        """Resume only the stored pending response after a recorded human decision."""
+        """Human verification gate: run the stored plan, or reject it for re-triage."""
         if incident.action_result.get("status") != "approval_required":
             raise ValueError("This incident is no longer awaiting approval")
         if decision not in {"approve", "deny"}:
@@ -427,46 +486,118 @@ class OrchestratorAgent:
         }
         incident.record("human", "response_decision", **approval, playbook=incident.selected_playbook)
         if decision == "deny":
-            incident.action_result = {"status": "denied", "actions": [], "playbook": incident.selected_playbook}
+            incident.action_result = {
+                "status": "denied", "actions": [], "playbook": incident.selected_playbook,
+                "feedback": "returned_for_retriage",
+            }
+            incident.record(self.name, "feedback_for_retriage", reason=approval["reason"])
         else:
-            self._execute_playbook(incident)
+            self._execute_plan(incident, approver=approval["reviewer"])
         incident.action_result["approval"] = approval
+        self._learn(incident, approval)
         return incident
 
-    def _execute_playbook(self, incident: Incident) -> Incident:
-        """Execute the reviewed playbook without selecting a different response."""
-        if incident.selected_playbook not in {
-            "monitor_and_investigate", "contain_endpoint", "contain_and_disable_user"
-        }:
+    def _learn(self, incident: Incident, approval: Dict[str, Any]) -> None:
+        """Approve: the plan was right for every action. Deny: the proposed actions were wrong."""
+        plan = incident.response_plan or {}
+        features = plan.get("features")
+        if not features:
+            return
+        proposed = set(steps_to_actions(plan.get("steps", [])))
+        if approval["decision"] == "approve":
+            labels = {action: int(action in proposed) for action in ACTIONS}
+        elif proposed:
+            labels = {action: 0 for action in proposed}
+        else:
+            return  # a rejected "monitor only" plan says more was needed, not which action
+        record_feedback(features, labels, {**approval, "incident_id": incident.incident_id, "playbook": incident.selected_playbook})
+        if self.model is not None and self.learn_from_decisions:
+            try:
+                self.model.learn(features, labels)
+            except Exception:
+                logging.getLogger(__name__).exception("Orchestrator online update failed")
+                return
+        incident.record(self.name, "learn_from_decision", labels=labels)
+
+    def _execute_plan(self, incident: Incident, approver: Optional[str] = None) -> Incident:
+        """Run exactly the reviewed steps, re-checking policy, then validate each result."""
+        if incident.selected_playbook not in KNOWN_PLAYBOOKS:
             raise ValueError("Unknown response playbook")
-        primary = incident.events[0]
+        plan = incident.response_plan or self._legacy_plan(incident)
+        named = {name: set(actions) for actions, (name, _) in NAMED_PLAYBOOKS.items()}
+        planned = set(steps_to_actions(plan.get("steps", [])))
+        if incident.selected_playbook in named and planned != named[incident.selected_playbook]:
+            raise ValueError("The stored plan does not match its playbook; re-run the Orchestrator")
+        risk = float(plan.get("risk_score", 0))
         actions = []
-        if incident.selected_playbook in {"contain_endpoint", "contain_and_disable_user"}:
-            actions.append(self.systems.isolate_endpoint(primary.host))
-        if incident.selected_playbook == "contain_and_disable_user":
-            actions.append(self.systems.disable_user(primary.user))
-        incident.action_result = {"status": "executed", "actions": actions}
+        for step in plan.get("steps", []):
+            if step["action"] not in RESPONSE_ACTIONS:
+                continue
+            try:
+                request = ActionRequest(
+                    action=step["action"], incident_id=incident.incident_id, target=step["target"],
+                    risk_score=min(100.0, risk), confidence=min(100.0, float(step.get("probability") or 1.0) * 100),
+                    approved_by=approver,
+                )
+                decision = self.policy.approve(request, approver) if approver else self.policy.evaluate(request)
+                blocked = not decision.allowed or (decision.requires_approval and self.require_approval)
+                reason = decision.reason
+            except ModelValidationError as exc:
+                blocked, reason = True, str(exc)
+            if blocked:
+                actions.append({"action": step["action"], "target": step["target"], "status": "blocked_by_policy", "reason": reason, "validated": False})
+                continue
+            result = self._run(step, incident)
+            result["validated"] = self._validate(step, result)
+            actions.append(result)
+
+        if not actions or all(a["validated"] for a in actions):
+            status = "executed"
+        elif all(a["status"] == "blocked_by_policy" for a in actions):
+            status = "blocked_by_policy"
+        else:
+            status = "action_failed"
+        incident.action_result = {"status": status, "actions": actions, "playbook": incident.selected_playbook, "executed_at": utc_now()}
         incident.record(self.name, "initiate_response", actions=actions)
-        incident.record(self.name, "confirm_action", action_result=incident.action_result)
+        incident.record(
+            self.name, "confirm_action", status=status,
+            failed=[a["action"] for a in actions if not a["validated"]],
+        )
         return incident
 
-    def _select_playbook(self, incident: Incident) -> str:
-        score = max(
-            float(incident.business_impact.get("impact_score", 0)),
-            float(incident.forecast.get("forecast_score", 0)),
-        )
-        if score >= 85 and incident.events[0].user:
-            return "contain_and_disable_user"
-        if score >= 60:
-            return "contain_endpoint"
-        return "monitor_and_investigate"
+    def _run(self, step: Dict[str, Any], incident: Incident) -> Dict[str, Any]:
+        action, target = step["action"], step["target"]
+        calls = {
+            "isolate_endpoint": lambda: self.systems.isolate_endpoint(target),
+            "disable_user": lambda: self.systems.disable_user(target),
+            "block_ip": lambda: self.systems.block_ip(target),
+            "quarantine_file": lambda: self.systems.quarantine_file(incident.events[0].host, target),
+        }
+        try:
+            return dict(calls[action]())
+        except AttributeError:
+            return {"action": action, "target": target, "status": "unsupported"}
+        except Exception as exc:  # report a failed integration instead of losing the other steps
+            return {"action": action, "target": target, "status": "failed", "error": str(exc)}
 
-    def _response_options(self, incident: Incident) -> List[Dict[str, Any]]:
-        return [
-            {"playbook": "monitor_and_investigate", "requires_approval": False},
-            {"playbook": "contain_endpoint", "requires_approval": True},
-            {"playbook": "contain_and_disable_user", "requires_approval": True},
-        ]
+    def _validate(self, step: Dict[str, Any], result: Dict[str, Any]) -> bool:
+        return str(result.get("status", "")).lower() in self.OK_STATUSES and str(result.get("target")) == str(step["target"])
+
+    @staticmethod
+    def _legacy_plan(incident: Incident) -> Dict[str, Any]:
+        """Incidents stored before the trained Orchestrator only carry a playbook name."""
+        targets = targets_for(incident)
+        actions = {
+            "contain_endpoint": ["isolate_endpoint"],
+            "contain_and_disable_user": ["isolate_endpoint", "disable_user"],
+        }.get(incident.selected_playbook, [])
+        return {
+            "risk_score": incident_risk(incident),
+            "steps": [
+                {"action": action, "target": targets[RESPONSE_ACTIONS[action].target] or "unknown", "probability": 1.0}
+                for action in actions
+            ],
+        }
 
 
 class SecurityOperationsPipeline:
@@ -476,13 +607,14 @@ class SecurityOperationsPipeline:
         self,
         systems: Optional[ExternalSystems] = None,
         require_approval: bool = True,
+        response_model: Any = _AUTO,
     ):
         systems = systems or DemoExternalSystems()
         self.sentinel = SentinelAgent()
         self.analyst = AnalystAgent(systems)
         self.prognostic = PrognosticAgent(systems)
         self.bi = BIAgent()
-        self.orchestrator = OrchestratorAgent(systems, require_approval=require_approval)
+        self.orchestrator = OrchestratorAgent(systems, require_approval=require_approval, response_model=response_model)
 
     def run(
         self,

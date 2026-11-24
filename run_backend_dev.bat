@@ -10,6 +10,8 @@ if errorlevel 1 (
 
 cd /d "%~dp0backend"
 set SOC_DEV_MODE=1
+rem Claude reviews incidents the rules can't settle. Needs ANTHROPIC_API_KEY set as a Windows user variable.
+set SOC_LLM_TRIAGE=auto
 echo DEV MODE - Dashboard: http://127.0.0.1:8000/app/
 "%~dp0.venv\Scripts\python.exe" -m uvicorn api:app --host 127.0.0.1 --port 8000
 pause

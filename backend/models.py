@@ -30,6 +30,7 @@ class ActionType(str, Enum):
     ISOLATE_ENDPOINT = "isolate_endpoint"
     DISABLE_USER = "disable_user"
     BLOCK_IP = "block_ip"
+    QUARANTINE_FILE = "quarantine_file"
     DELETE_DATA = "delete_data"
 
 
