@@ -7,6 +7,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
+import agents
 from agents import SecurityEvent, SecurityOperationsPipeline, Severity, utc_now
 from database import IncidentRepository
 from integrations import IntegrationHub
@@ -26,7 +27,8 @@ def pending_incident(systems):
         event_type="suspicious_login", user="alice", host="prod-db-01",
         severity=Severity.CRITICAL,
     ) for index in range(5)]
-    return SecurityOperationsPipeline(systems=systems).run(events)
+    # The gate is under test here, not the trained model, so the rule fallback decides.
+    return SecurityOperationsPipeline(systems=systems, response_model=None).run(events)
 
 
 @unittest.skipIf(TestClient is None, "FastAPI and httpx are optional dependencies")
@@ -37,7 +39,7 @@ class ApprovalApiTests(unittest.TestCase):
         self.incident = pending_incident(self.systems)
         self.assertEqual(self.incident.selected_playbook, "contain_and_disable_user")
         self.repository.save_incident(self.incident)
-        with patch.object(api, "IncidentRepository", return_value=self.repository), patch.object(api, "IntegrationHub", return_value=self.systems):
+        with patch.object(api, "IncidentRepository", return_value=self.repository), patch.object(api, "IntegrationHub", return_value=self.systems),                 patch.object(agents.ResponseModel, "load", return_value=None):
             self.client = TestClient(api.create_app())
         self.url = f"/incidents/{self.incident.incident_id}/decision"
 
@@ -99,6 +101,11 @@ class ApprovalApiTests(unittest.TestCase):
         response = self.client.post("/incidents/missing/decision", json={"decision": "deny", "reviewer": "Analyst", "reason": "No evidence"})
         self.assertEqual(response.status_code, 404)
 
+    def test_plan_that_contradicts_its_playbook_is_refused(self):
+        self.repository.update_pending_incident(self.incident.incident_id, lambda incident: setattr(incident, "selected_playbook", "monitor_and_investigate"))
+        self.assertEqual(self.decide().status_code, 409)
+        self.assertEqual(self.systems.edr.actions, [])
+
     def test_reingestion_preserves_denial_and_decision_audit(self):
         decided = self.decide("deny").json()
         events = [{"event_id": event.event_id, "event_type": event.event_type, "severity": "critical", "host": event.host, "user": event.user} for event in self.incident.events]
@@ -109,7 +116,10 @@ class ApprovalApiTests(unittest.TestCase):
 
     def test_monitor_playbook_can_be_reviewed_without_containment(self):
         self.incident.selected_playbook = "monitor_and_investigate"
-        self.repository.update_pending_incident(self.incident.incident_id, lambda incident: setattr(incident, "selected_playbook", "monitor_and_investigate"))
+        def monitor_only(incident):
+            incident.selected_playbook = "monitor_and_investigate"
+            incident.response_plan["steps"] = [{"action": "monitor", "target": "prod-db-01"}]
+        self.repository.update_pending_incident(self.incident.incident_id, monitor_only)
         response = self.decide()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["action_result"]["actions"], [])
@@ -124,7 +134,7 @@ class DecisionConcurrencyTests(unittest.TestCase):
             systems = IntegrationHub()
             incident = pending_incident(systems)
             first.save_incident(incident)
-            orchestrator = SecurityOperationsPipeline(systems=systems).orchestrator
+            orchestrator = SecurityOperationsPipeline(systems=systems, response_model=None).orchestrator
             barrier = threading.Barrier(2)
 
             def review(repository):

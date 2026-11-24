@@ -419,7 +419,11 @@ function detectionDetails(incident) {
 function playbookDetails(incident) {
   const playbook = incident.explanations?.playbook;
   if (!playbook?.name) return `<div class="detail-section"><span class="detail-label">Recommended response</span><p>Not assigned</p></div>`;
-  return `<div class="detail-section"><span class="detail-label">Recommended response</span><p><strong>${escapeHtml(playbook.title)}</strong> <span class="code-ref">${escapeHtml(playbook.name)}</span></p><p>${escapeHtml(playbook.what)}</p><span class="detail-label">Why this response</span><p class="explain-text">${escapeHtml(playbook.why)}</p>${playbook.next ? `<p class="explain-text">${escapeHtml(playbook.next)}</p>` : ''}${playbook.status ? `<p class="incident-meta">Status: ${escapeHtml(playbook.status)}</p>` : ''}</div>`;
+  const results = (playbook.actions || []).length
+    ? `<span class="detail-label">Actions taken</span><ul class="triage-list">${playbook.actions.map((a) => `<li>${escapeHtml((a.action || '').replaceAll('_', ' '))} → ${escapeHtml(a.target || 'unknown')}: ${escapeHtml(a.status || '')}${a.validated ? ' ✓ confirmed' : ''}${a.reason ? ` (${escapeHtml(a.reason)})` : ''}</li>`).join('')}</ul>`
+    : '';
+  const source = playbook.decided_by === 'model' ? ' <span class="code-ref">trained model</span>' : '';
+  return `<div class="detail-section"><span class="detail-label">Recommended response</span><p><strong>${escapeHtml(playbook.title)}</strong> <span class="code-ref">${escapeHtml(playbook.name)}</span>${source}</p><p>${escapeHtml(playbook.what)}</p><span class="detail-label">Why this response</span><p class="explain-text">${escapeHtml(playbook.why)}</p>${playbook.next ? `<p class="explain-text">${escapeHtml(playbook.next)}</p>` : ''}${playbook.status ? `<p class="incident-meta">Status: ${escapeHtml(playbook.status)}</p>` : ''}${results}</div>`;
 }
 
 const CLAUDE_TOOLS = {
@@ -535,14 +539,18 @@ function openDrawer(incidentId) {
   const resolveControl = resolved
     ? `<p class="resolved-note">Resolved ${escapeHtml(formatDate(incident.action_result?.resolved_at))}</p>${note ? `<span class="detail-label">Analyst reasoning</span><p class="resolution-note">${escapeHtml(note)}</p>` : ''}`
     : `<label class="detail-label" for="resolve-note">Your reasoning</label><textarea id="resolve-note" rows="3" maxlength="4000" placeholder="Why is this safe to close? E.g. confirmed with the user, expected maintenance, known false positive…">${escapeHtml(draft)}</textarea><button class="resolve-button" type="button" id="resolve-incident" data-incident-id="${escapeHtml(incident.incident_id)}">Mark as resolved ✓</button><div id="resolve-message" class="form-message" role="status"></div>`;
+  const decisionControl = status === 'approval_required'
+    ? `<div class="detail-section"><span class="detail-label">Human verification gate</span><p class="incident-meta">Approve runs the recommended response below. Reject sends the incident back for re-triage. Either way, the Orchestrator learns from your decision.</p><label class="detail-label" for="decision-reviewer">Your name</label><input id="decision-reviewer" maxlength="200" value="${escapeHtml(localStorage.getItem('socReviewer') || '')}" /><label class="detail-label" for="decision-reason">Reason</label><textarea id="decision-reason" rows="2" maxlength="2000" placeholder="What did you check?"></textarea><button class="resolve-button" type="button" data-decision="approve">Approve response</button> <button class="resolve-button" type="button" data-decision="deny">Reject → re-triage</button><div id="decision-message" class="form-message" role="status"></div></div>`
+    : '';
   $('#drawer-title').textContent = incident.explanations?.title || incident.alert?.title || event.event_type || 'Security incident';
-  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div><div class="drawer-actions">${resolveControl}</div>${incident.explanations?.detection?.event ? `<div class="detail-section"><span class="detail-label">What happened</span><p>${escapeHtml(incident.explanations.detection.event)}</p></div>` : ''}<dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(incident.explanations?.event_type || event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl>${triageDetails(incident)}${detectionDetails(incident) || `<div class="detail-section"><span class="detail-label">Sentinel detection</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>`}${playbookDetails(incident)}`;
+  $('#drawer-content').innerHTML = `<div class="drawer-status"><span class="status-badge ${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span><strong>${score}/100 risk</strong></div>${decisionControl}<div class="drawer-actions">${resolveControl}</div>${incident.explanations?.detection?.event ? `<div class="detail-section"><span class="detail-label">What happened</span><p>${escapeHtml(incident.explanations.detection.event)}</p></div>` : ''}<dl class="detail-grid"><dt>Incident ID</dt><dd>${escapeHtml(incident.incident_id)}</dd><dt>Detected</dt><dd>${escapeHtml(formatDate(incident.detected_at))}</dd><dt>Occurrences</dt><dd>${occurrenceCount(incident)}</dd><dt>First seen</dt><dd>${escapeHtml(formatDate(incident.alert?.first_seen))}</dd><dt>Last seen</dt><dd>${escapeHtml(formatDate(incident.alert?.last_seen))}</dd><dt>Event type</dt><dd>${escapeHtml(incident.explanations?.event_type || event.event_type || 'Unknown')}</dd><dt>Severity</dt><dd>${escapeHtml(event.severity || 'Unknown')}</dd><dt>User</dt><dd>${escapeHtml(event.user || 'Unknown')}</dd><dt>Host</dt><dd>${escapeHtml(event.host || 'Unknown')}</dd><dt>Source IP</dt><dd>${escapeHtml(event.source_ip || 'Unknown')}</dd></dl>${triageDetails(incident)}${detectionDetails(incident) || `<div class="detail-section"><span class="detail-label">Sentinel detection</span><p>${escapeHtml(incident.alert?.summary || event.message || 'No summary available.')}</p></div>`}${playbookDetails(incident)}`;
   $('#drawer-content').querySelectorAll('[data-open-incident]').forEach((button) => button.addEventListener('click', () => openDrawer(button.dataset.openIncident)));
   const askButton = $('#ask-claude');
   if (askButton) askButton.addEventListener('click', () => askClaude(askButton.dataset.incidentId, askButton));
   state.openIncidentId = incident.incident_id;
   const resolveButton = $('#resolve-incident');
   if (resolveButton) resolveButton.addEventListener('click', () => resolveIncident(resolveButton.dataset.incidentId, resolveButton));
+  $('#drawer-content').querySelectorAll('[data-decision]').forEach((button) => button.addEventListener('click', () => decideIncident(incident.incident_id, button.dataset.decision)));
   $('#incident-drawer').classList.add('open');
   $('#incident-drawer').setAttribute('aria-hidden', 'false');
 }
@@ -563,6 +571,37 @@ async function resolveIncident(incidentId, button) {
     $('#resolve-message').className = 'form-message error';
     $('#resolve-message').textContent = error.message;
     button.disabled = false;
+  }
+}
+
+async function decideIncident(incidentId, decision) {
+  const buttons = [...document.querySelectorAll('[data-decision]')];
+  const reviewer = $('#decision-reviewer')?.value.trim() || '';
+  const reason = $('#decision-reason')?.value.trim() || '';
+  const message = $('#decision-message');
+  if (!reviewer || !reason) {
+    message.className = 'form-message error';
+    message.textContent = 'Enter your name and a reason first.';
+    return;
+  }
+  buttons.forEach((button) => { button.disabled = true; });
+  try {
+    localStorage.setItem('socReviewer', reviewer);
+    const response = await fetch(`/incidents/${encodeURIComponent(incidentId)}/decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, reviewer, reason }),
+    });
+    if (!response.ok) {
+      const detail = (await response.json().catch(() => ({}))).detail;
+      throw new Error(detail || `Could not record the decision (${response.status}).`);
+    }
+    await loadIncidents();
+    openDrawer(incidentId);
+  } catch (error) {
+    message.className = 'form-message error';
+    message.textContent = error.message;
+    buttons.forEach((button) => { button.disabled = false; });
   }
 }
 

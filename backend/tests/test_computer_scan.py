@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from agents import SentinelAgent
 from anomaly import detect_anomalies
-from gatherer import SecurityLogBatch, WindowsSecurityRecord, gather_security_events, parse_security_record
+from security_log import SecurityLogBatch, WindowsSecurityRecord, gather_security_events, parse_security_record
 
 
 def record(event_id=4625, record_id=10):
@@ -61,7 +61,7 @@ class SecurityDetectionTests(unittest.TestCase):
 class CollectorTests(unittest.TestCase):
     def collect(self, stdout="[]", returncode=0, **kwargs):
         result = subprocess.CompletedProcess([], returncode, stdout, "")
-        with patch("gatherer.os.name", "nt"), patch("gatherer.subprocess.run", return_value=result) as run:
+        with patch("security_log.os.name", "nt"), patch("security_log.subprocess.run", return_value=result) as run:
             collected = gather_security_events(**kwargs)
         self.assertEqual(run.call_args.kwargs["timeout"], 30)
         self.assertNotIn("shell", run.call_args.kwargs)
@@ -92,14 +92,14 @@ class CollectorTests(unittest.TestCase):
                 self.collect(output, code)
 
     def test_timeout(self):
-        with patch("gatherer.os.name", "nt"), patch("gatherer.subprocess.run", side_effect=subprocess.TimeoutExpired("powershell.exe", 30)):
+        with patch("security_log.os.name", "nt"), patch("security_log.subprocess.run", side_effect=subprocess.TimeoutExpired("powershell.exe", 30)):
             with self.assertRaisesRegex(RuntimeError, "timed out"):
                 gather_security_events()
 
     def test_unsupported_host_and_invalid_limits(self):
-        with patch("gatherer.os.name", "posix"), self.assertRaisesRegex(RuntimeError, "Windows"):
+        with patch("security_log.os.name", "posix"), self.assertRaisesRegex(RuntimeError, "Windows"):
             gather_security_events()
-        with patch("gatherer.os.name", "nt"):
+        with patch("security_log.os.name", "nt"):
             for limit in [0, 1001, "1; exit", True]:
                 with self.subTest(limit=limit), self.assertRaises(ValueError):
                     gather_security_events(limit=limit)

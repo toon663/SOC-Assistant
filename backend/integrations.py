@@ -57,6 +57,18 @@ class MockIAM:
 
 
 @dataclass
+class MockFirewall:
+    """Simulated perimeter/host firewall."""
+
+    actions: list[dict[str, Any]] = field(default_factory=list)
+
+    def block(self, ip: str) -> dict[str, Any]:
+        result = {"action": "block_ip", "target": ip, "status": "simulated"}
+        self.actions.append(result)
+        return result
+
+
+@dataclass
 class MockTicketing:
     """Simulated incident ticketing system."""
 
@@ -81,6 +93,7 @@ class IntegrationHub(DemoExternalSystems):
         self.siem = MockSIEM()
         self.edr = MockEDR()
         self.iam = MockIAM()
+        self.firewall = MockFirewall()
         self.ticketing = MockTicketing()
 
     def create_ticket(self, incident) -> str:
@@ -94,6 +107,14 @@ class IntegrationHub(DemoExternalSystems):
 
     def disable_user(self, user=None):
         return self.iam.disable(user or "unknown")
+
+    def block_ip(self, source_ip=None):
+        return self.firewall.block(source_ip or "unknown")
+
+    def quarantine_file(self, host=None, file=None):
+        result = {"action": "quarantine_file", "target": file or "unknown", "host": host, "status": "simulated"}
+        self.edr.actions.append(result)
+        return result
 
 @dataclass
 class KnowledgeDocument:

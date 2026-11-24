@@ -1,0 +1,253 @@
+{
+  "trained_at": "2026-11-24T03:30:22.498287+00:00",
+  "training_data": "OTRF Security-Datasets (Mordor) Windows atomic recordings, labeled with MITRE D3FEND countermeasures; WitFoo Precinct6 production Windows traffic as no-containment examples; EMBER2024 test-set files scored by Sentinel's scanner (malware and false alarms)",
+  "incidents": 9710,
+  "incidents_per_source": {
+    "mordor": 3022,
+    "witfoo": 4065,
+    "ember": 2623
+  },
+  "recordings": 704,
+  "analyst_decisions": 0,
+  "evaluation": "5-fold GroupKFold, whole recordings / host-days held out",
+  "thresholds": {
+    "isolate_endpoint": 0.65,
+    "disable_user": 0.5,
+    "block_ip": 0.6,
+    "quarantine_file": 0.9
+  },
+  "model": {
+    "per_action": {
+      "isolate_endpoint": {
+        "support": 204,
+        "predicted": 240,
+        "precision": 0.5667,
+        "recall": 0.6667,
+        "f1": 0.6126
+      },
+      "disable_user": {
+        "support": 63,
+        "predicted": 42,
+        "precision": 0.619,
+        "recall": 0.4127,
+        "f1": 0.4952
+      },
+      "block_ip": {
+        "support": 47,
+        "predicted": 38,
+        "precision": 0.7105,
+        "recall": 0.5745,
+        "f1": 0.6353
+      },
+      "quarantine_file": {
+        "support": 0,
+        "predicted": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "micro_f1": 0.5962,
+    "macro_f1_learnable": 0.581,
+    "exact_plan_match": 0.9298,
+    "over_response_rate": 0.0397
+  },
+  "rules_baseline": {
+    "per_action": {
+      "isolate_endpoint": {
+        "support": 204,
+        "predicted": 310,
+        "precision": 0.2,
+        "recall": 0.3039,
+        "f1": 0.2412
+      },
+      "disable_user": {
+        "support": 63,
+        "predicted": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "block_ip": {
+        "support": 47,
+        "predicted": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "quarantine_file": {
+        "support": 0,
+        "predicted": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    "micro_f1": 0.1987,
+    "macro_f1_learnable": 0.0804,
+    "exact_plan_match": 0.857,
+    "over_response_rate": 0.0821
+  },
+  "witfoo_production_traffic": {
+    "model": {
+      "incidents": 4065,
+      "false_containment_rate": 0.0086,
+      "isolate_endpoint_rate": 0.0079,
+      "disable_user_rate": 0.0007,
+      "block_ip_rate": 0.0002,
+      "quarantine_file_rate": 0.0
+    },
+    "rules_baseline": {
+      "incidents": 4065,
+      "false_containment_rate": 0.2111,
+      "isolate_endpoint_rate": 0.2111,
+      "disable_user_rate": 0.0,
+      "block_ip_rate": 0.0,
+      "quarantine_file_rate": 0.0
+    },
+    "previous_model": {
+      "incidents": 4065,
+      "false_containment_rate": 0.0135,
+      "isolate_endpoint_rate": 0.013,
+      "disable_user_rate": 0.0005,
+      "block_ip_rate": 0.0002,
+      "quarantine_file_rate": 0.0
+    }
+  },
+  "ember_malware_held_out_families": {
+    "model": {
+      "per_action": {
+        "isolate_endpoint": {
+          "support": 2000,
+          "predicted": 1912,
+          "precision": 1.0,
+          "recall": 0.956,
+          "f1": 0.9775
+        },
+        "disable_user": {
+          "support": 42,
+          "predicted": 35,
+          "precision": 0.9429,
+          "recall": 0.7857,
+          "f1": 0.8571
+        },
+        "block_ip": {
+          "support": 0,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "quarantine_file": {
+          "support": 2000,
+          "predicted": 1884,
+          "precision": 1.0,
+          "recall": 0.942,
+          "f1": 0.9701
+        }
+      },
+      "micro_f1": 0.9727,
+      "macro_f1_learnable": 0.9349,
+      "exact_plan_match": 0.937,
+      "over_response_rate": 0.001
+    },
+    "rules_baseline": {
+      "per_action": {
+        "isolate_endpoint": {
+          "support": 2000,
+          "predicted": 808,
+          "precision": 1.0,
+          "recall": 0.404,
+          "f1": 0.5755
+        },
+        "disable_user": {
+          "support": 42,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "block_ip": {
+          "support": 0,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "quarantine_file": {
+          "support": 2000,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "micro_f1": 0.3332,
+      "macro_f1_learnable": 0.1918,
+      "exact_plan_match": 0.0,
+      "over_response_rate": 0.0
+    },
+    "previous_model": {
+      "per_action": {
+        "isolate_endpoint": {
+          "support": 2000,
+          "predicted": 8,
+          "precision": 1.0,
+          "recall": 0.004,
+          "f1": 0.008
+        },
+        "disable_user": {
+          "support": 42,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "block_ip": {
+          "support": 0,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "quarantine_file": {
+          "support": 2000,
+          "predicted": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "micro_f1": 0.004,
+      "macro_f1_learnable": 0.0027,
+      "exact_plan_match": 0.0,
+      "over_response_rate": 0.0
+    }
+  },
+  "ember_false_alarm_files": {
+    "model": {
+      "incidents": 623,
+      "false_containment_rate": 0.2825,
+      "isolate_endpoint_rate": 0.2809,
+      "disable_user_rate": 0.0016,
+      "block_ip_rate": 0.0,
+      "quarantine_file_rate": 0.122
+    },
+    "rules_baseline": {
+      "incidents": 623,
+      "false_containment_rate": 0.0161,
+      "isolate_endpoint_rate": 0.0161,
+      "disable_user_rate": 0.0,
+      "block_ip_rate": 0.0,
+      "quarantine_file_rate": 0.0
+    },
+    "previous_model": {
+      "incidents": 623,
+      "false_containment_rate": 0.0,
+      "isolate_endpoint_rate": 0.0,
+      "disable_user_rate": 0.0,
+      "block_ip_rate": 0.0,
+      "quarantine_file_rate": 0.0
+    }
+  }
+}

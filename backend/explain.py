@@ -140,7 +140,59 @@ ACTION_STATUSES = {
     "approval_required": "Waiting for approval: nothing has been done to the computer or account yet.",
     "executed": "Carried out (simulated in this demo; no real computer or account was changed).",
     "resolved": "Closed by an analyst.",
+    "denied": "Rejected by the reviewer and sent back for re-triage; nothing was changed.",
+    "blocked_by_policy": "Approved, but the safety policy blocked every action when it was re-checked.",
+    "action_failed": "Some actions did not complete or could not be confirmed; check each action below.",
 }
+
+ACTION_NAMES = {
+    "isolate_endpoint": "isolate the computer",
+    "disable_user": "disable the account",
+    "block_ip": "block the source address",
+    "quarantine_file": "quarantine the file",
+}
+
+
+def explain_model_plan(incident: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    """The trained Orchestrator's plan: its score for each action, and what policy changed."""
+    options = incident.get("response_options") or []
+    scored = ", ".join(
+        f"{ACTION_NAMES.get(o['action'], o['action'])} {o['probability']:.0%} (needs {o['threshold']:.0%})"
+        for o in sorted(options, key=lambda o: -o["probability"])
+    )
+    chosen = [ACTION_NAMES.get(s["action"], s["action"]) for s in plan.get("steps", []) if s["action"] in ACTION_NAMES]
+    parts = [f"The Orchestrator's trained model scored each possible response: {scored}."]
+    skipped = [o for o in options if o["probability"] >= o["threshold"] and not o["selected"]]
+    if skipped:
+        parts.append(" ".join(f"It would {ACTION_NAMES.get(o['action'], o['action'])}, but there is {o['reason']}." for o in skipped))
+    for step in plan.get("dropped_steps", []):
+        parts.append(f"The safety policy removed \"{ACTION_NAMES.get(step['action'], step['action'])}\": {step['policy']['reason']}.")
+    if plan.get("guardrail"):
+        parts.append(plan["guardrail"])
+    parts.append(f"Proposed: {', '.join(chosen)}." if chosen else "Nothing scored high enough to act on automatically, so the plan is to monitor.")
+    analysis = incident.get("risk_analysis") or {}
+    if analysis.get("verdict") == "benign" and chosen:
+        parts.append("The Analyst rated this benign, so check whether this response is really needed before approving it.")
+
+    result = incident.get("action_result") or {}
+    status = result.get("status")
+    status_text = ACTION_STATUSES.get(status, status.replace("_", " ") if status else "")
+    if status == "approval_required" and not chosen:
+        status_text = "No automatic action to approve: this response only monitors. Approve to confirm, or reject to send it back for re-triage."
+    what = " ".join(f"{s['description']} ({s['target']})." for s in plan.get("steps", []))
+    return {
+        "name": plan.get("playbook"),
+        "title": plan.get("title"),
+        "what": what,
+        "why": " ".join(parts),
+        "next": "",
+        "status": status_text,
+        "decided_by": "model",
+        "actions": [
+            {"action": a.get("action"), "target": a.get("target"), "status": a.get("status"), "validated": a.get("validated"), "reason": a.get("reason")}
+            for a in result.get("actions") or []
+        ],
+    }
 
 _attack_lock = threading.Lock()
 
@@ -409,6 +461,9 @@ def explain_playbook(incident: dict[str, Any]) -> dict[str, Any]:
     name = incident.get("selected_playbook")
     if not name:
         return {}
+    plan = incident.get("response_plan") or {}
+    if plan.get("decided_by") == "model":
+        return explain_model_plan(incident, plan)
     event = (incident.get("events") or [{}])[0]
     host = event.get("host") or "the computer"
     user = event.get("user") or "the user"
@@ -423,14 +478,15 @@ def explain_playbook(incident: dict[str, Any]) -> dict[str, Any]:
 
     reputation = intel.get("reputation")
     ip_part = f"the source address's reputation ({reputation})" if intel.get("ip") else "no source address"
-    parts = [
+    fallback = ["No trained Orchestrator model is loaded, so fixed score thresholds chose this response."] if plan.get("decided_by") == "rules_fallback" else []
+    parts = fallback + [
         f"The response is chosen from the higher of two scores: the risk forecast ({forecast_score:.0f}/100), which combines the "
         f"triage score ({float(analysis.get('risk_score', 0)):.0f}) with {ip_part}, and the business impact ({impact_score:.0f}/100)"
     ]
     if impact.get("criticality") == "high":
-        parts[0] += f", which is raised because {host} is marked as a high-importance machine."
+        parts[-1] += f", which is raised because {host} is marked as a high-importance machine."
     else:
-        parts[0] += f", which equals the forecast because {host} is a normal-importance machine."
+        parts[-1] += f", which equals the forecast because {host} is a normal-importance machine."
     shown = f"{deciding:.1f}".removesuffix(".0")
     if name == "contain_and_disable_user":
         parts.append(f"At {shown}, it is 85 or more and the activity is tied to the account {user}, so both the machine and the account are contained.")

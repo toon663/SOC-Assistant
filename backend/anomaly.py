@@ -1,7 +1,7 @@
 """Review rules for Windows Security events; matches require analyst review."""
 from __future__ import annotations
 
-from gatherer import SecurityLogBatch
+from security_log import SecurityLogBatch
 
 
 # Audit success and failure can both have Windows event level 0: use event IDs.
