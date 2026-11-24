@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+forecasts/
+storage/
+# Also cover alternate SQLite paths, including their live WAL companions.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+models/
+private/

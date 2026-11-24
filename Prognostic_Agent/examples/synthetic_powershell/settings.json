@@ -1,0 +1,11 @@
+{
+  "synthetic": true,
+  "environment": "test",
+  "forecast_as_of": "2026-11-23T12:00:00Z",
+  "behavioral_score": 70,
+  "max_candidates": 5,
+  "technique_evidence": {
+    "T1078": ["synthetic-valid-account-001"],
+    "T1059.001": ["synthetic-powershell-001"]
+  }
+}

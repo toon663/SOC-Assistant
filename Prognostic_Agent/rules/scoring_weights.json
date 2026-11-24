@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "version": "phase1.1",
+  "candidate_weights": {
+    "evidence_support": 0.35,
+    "prerequisite_satisfaction": 0.25,
+    "privilege_fit": 0.20,
+    "reachable_target_support": 0.15,
+    "recency": 0.05
+  },
+  "risk_weights": {"analyst_behavior": 0.60, "technical_impact": 0.40},
+  "criticality_scores": {"low": 25, "normal": 50, "high": 75, "critical": 100},
+  "benign_risk_cap": 20
+}

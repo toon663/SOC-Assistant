@@ -129,6 +129,8 @@ def apply_review(analysis: dict[str, Any], review: dict[str, Any]) -> dict[str, 
             # Claude's reasoning explains a benign call it made; a rule's explanation no longer applies once escalated.
             benign_explanation=f"Claude's assessment: {review['reasoning']}" if claude_verdict == BENIGN else "",
         )
+        if analysis["risk_score"] != old:
+            analysis.update(behavioral_score=None, behavioral_score_stale=True)
         review["outcome"] = "changed_verdict"
     else:
         review["outcome"] = "disagreed"

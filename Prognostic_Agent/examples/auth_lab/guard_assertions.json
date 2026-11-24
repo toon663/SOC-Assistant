@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "environment": "test",
+  "provenance": "Hand-authored lab assertions, not new backend output. Source labels identify the asserted pipeline role, not authenticated provenance. Record aliases are resolved only against actual pipeline events.",
+  "event_document_as_of": "2026-11-23T12:00:00Z",
+  "subject": {
+    "user_id": "user:fixture-admin",
+    "host_id": "host:fixture-workstation",
+    "source_ip": "203.0.113.42",
+    "endpoint_id": "auth:fixture-workstation:network-logon"
+  },
+  "source_technique": "T1110.001",
+  "seed_record_ids": [9100, 9101, 9102, 9103, 9104],
+  "analyst_correlation": {
+    "source": "analyst",
+    "as_of": "2026-11-23T11:53:00Z",
+    "record_ids": [9100, 9101, 9102, 9103, 9104],
+    "activity": "online_authentication_failures",
+    "event_count": 5,
+    "window_start": "2026-11-23T11:49:00Z",
+    "window_end": "2026-11-23T11:53:00Z"
+  },
+  "authentication_reachability": {
+    "source": "lab-inventory:hand-authored",
+    "as_of": "2026-11-23T11:53:00Z",
+    "evidence_refs": ["lab-inventory:auth-state-001"],
+    "reachable": true
+  },
+  "account_authentication": {
+    "source": "lab-inventory:hand-authored",
+    "as_of": "2026-11-23T11:53:00Z",
+    "evidence_refs": ["lab-inventory:auth-state-001"],
+    "enabled": true,
+    "locked": false,
+    "blocked": false
+  },
+  "inventory_evidence": {
+    "event_id": "lab-inventory:auth-state-001",
+    "timestamp": "2026-11-23T11:53:00Z",
+    "source": "hand-authored-lab-inventory",
+    "event_type": "inventory_snapshot",
+    "user": "fixture-admin",
+    "host": "fixture-workstation",
+    "source_ip": "203.0.113.42",
+    "message": "Hand-authored test assertion about account controls and endpoint reachability; not a detected attack event.",
+    "metadata": {
+      "environment": "test",
+      "synthetic": true,
+      "endpoint_id": "auth:fixture-workstation:network-logon",
+      "reachable": true,
+      "enabled": true,
+      "locked": false,
+      "blocked": false
+    }
+  }
+}

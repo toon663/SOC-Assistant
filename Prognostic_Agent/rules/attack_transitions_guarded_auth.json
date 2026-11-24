@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "version": "phase2.1-auth",
+  "description": "Explicit opt-in guarded authentication rule set. Local conditional hypotheses, not transition probabilities. Default CLI rules remain unchanged.",
+  "rules": [
+    {
+      "rule_id": "online-brute-force-to-valid-account",
+      "source": "T1110",
+      "include_subtechniques": true,
+      "excluded_subtechniques": ["T1110.002"],
+      "target": "T1078",
+      "target_name": "Valid Accounts",
+      "platform": "windows",
+      "minimum_privilege": "none",
+      "requires_reachable_target": false,
+      "terminal": true,
+      "guards": [
+        {"type": "exact_attribution"},
+        {"type": "evidence_freshness", "max_age_hours": 24},
+        {"type": "analyst_correlation", "minimum_events": 5, "window_hours": 1},
+        {"type": "authentication_reachability"},
+        {"type": "account_authentication"},
+        {"type": "target_not_observed"}
+      ],
+      "rationale": "An Analyst-established cohort of repeated online authentication failures may precede future valid-account use when the named account can authenticate and the source can reach its endpoint. Success is conditional, not observed or assumed. Offline cracking is excluded. Already-observed valid-account use must be handled as observed evidence. Expansion terminates at the predicted account-use step.",
+      "references": ["https://attack.mitre.org/techniques/T1110/", "https://attack.mitre.org/techniques/T1078/"]
+    },
+    {
+      "rule_id": "valid-account-to-powershell",
+      "source": "T1078",
+      "include_subtechniques": true,
+      "target": "T1059.001",
+      "target_name": "PowerShell",
+      "platform": "windows",
+      "minimum_privilege": "user",
+      "requires_reachable_target": false,
+      "rationale": "A valid account with execution privileges may be used to run PowerShell; account possession alone does not establish execution.",
+      "references": ["https://attack.mitre.org/techniques/T1078/", "https://attack.mitre.org/techniques/T1059/001/"]
+    },
+    {
+      "rule_id": "powershell-to-lsass-access",
+      "source": "T1059.001",
+      "target": "T1003.001",
+      "target_name": "LSASS Memory",
+      "platform": "windows",
+      "minimum_privilege": "admin",
+      "requires_reachable_target": false,
+      "rationale": "Elevated PowerShell execution creates an opportunity for attempted LSASS credential access; host protections may prevent it.",
+      "references": ["https://attack.mitre.org/techniques/T1059/001/", "https://attack.mitre.org/techniques/T1003/001/"]
+    },
+    {
+      "rule_id": "credential-access-to-smb",
+      "source": "T1003.001",
+      "target": "T1021.002",
+      "target_name": "SMB/Windows Admin Shares",
+      "platform": "windows",
+      "minimum_privilege": "admin",
+      "requires_reachable_target": true,
+      "rationale": "Credential access may enable attempted SMB lateral movement where an explicit can_access relationship supports reachability. Remote authorization remains an assumption.",
+      "references": ["https://attack.mitre.org/techniques/T1003/001/", "https://attack.mitre.org/techniques/T1021/002/"]
+    }
+  ]
+}

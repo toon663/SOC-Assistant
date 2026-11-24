@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "environment": "test",
+  "provenance": "Hand-authored lab ground truth. No live host, account or connectivity query was performed.",
+  "entities": [
+    {
+      "entity_id": "user:fixture-admin",
+      "canonical_id": "user:fixture-admin",
+      "entity_type": "user",
+      "asset_owner": "Lab Operations",
+      "asset_criticality": "normal",
+      "privilege_level": "admin",
+      "platform": "windows",
+      "exposure": "internal",
+      "as_of": "2026-11-23T11:40:00Z",
+      "related_assets": [],
+      "account_controls": {
+        "endpoint_id": "auth:fixture-workstation:network-logon",
+        "as_of": "2026-11-23T11:53:00Z",
+        "enabled": true,
+        "locked": false,
+        "blocked": false,
+        "notes": "Lab account may authenticate; this is not evidence that password guessing succeeded."
+      }
+    },
+    {
+      "entity_id": "host:fixture-workstation",
+      "canonical_id": "host:fixture-workstation",
+      "entity_type": "host",
+      "asset_owner": "Lab Operations",
+      "asset_criticality": "high",
+      "privilege_level": "user",
+      "platform": "windows",
+      "exposure": "internet",
+      "as_of": "2026-11-23T11:40:00Z",
+      "related_assets": [
+        {
+          "entity_id": "host:fixture-file-server",
+          "entity_type": "host",
+          "relation": "can_access",
+          "reachable": true,
+          "as_of": "2026-11-23T11:53:00Z",
+          "evidence_ref": "lab-inventory:workstation-to-file-server"
+        }
+      ],
+      "authentication_endpoint": {
+        "endpoint_id": "auth:fixture-workstation:network-logon",
+        "source_ip": "203.0.113.42",
+        "as_of": "2026-11-23T11:53:00Z",
+        "reachable": true
+      }
+    },
+    {
+      "entity_id": "host:fixture-file-server",
+      "canonical_id": "host:fixture-file-server",
+      "entity_type": "host",
+      "asset_owner": "Lab File Services",
+      "asset_criticality": "high",
+      "privilege_level": "user",
+      "platform": "windows",
+      "exposure": "internal",
+      "as_of": "2026-11-23T11:40:00Z",
+      "related_assets": []
+    },
+    {
+      "entity_id": "user:fixture-backup",
+      "canonical_id": "user:fixture-backup",
+      "entity_type": "user",
+      "asset_owner": "Lab File Services",
+      "asset_criticality": "normal",
+      "privilege_level": "user",
+      "platform": "windows",
+      "exposure": "internal",
+      "as_of": "2026-11-23T11:40:00Z",
+      "related_assets": [],
+      "account_controls": {
+        "endpoint_id": "auth:fixture-file-server:smb",
+        "as_of": "2026-11-23T11:53:00Z",
+        "enabled": false,
+        "locked": false,
+        "blocked": true,
+        "notes": "Unused disabled lab account; not an entity in the demo incidents."
+      }
+    }
+  ]
+}

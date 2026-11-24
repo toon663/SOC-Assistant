@@ -3,6 +3,8 @@ A multi-agent cybersecurity framework that combines Agentic AI, RAG, adaptive co
 
 # SOC Multi-Agent Cybersecurity Platform
 
+See the [editable architecture diagram](docs/architecture.md) for the implemented workflow, human review gate, offline ADFA-LD evaluation, and integration status of supporting modules.
+
 This project models a human-supervised security operations workflow:
 
 SIEM/EDR/IAM/TI -> Sentinel -> Analyst -> Prognostic -> BI -> Orchestrator
@@ -141,6 +143,59 @@ GET /scan/status — whether the malware scanner and its models are loaded
 POST /scan/path — scan a file on the server, e.g. {"path": "C:\\Users\\bob\\Downloads\\setup.exe"}
 
 POST /scan/upload?filename=setup.exe — scan a file sent as the raw request body (application/octet-stream)
+
+Offline ADFA-LD benchmark
+
+Download and extract **ADFA-LD** from the [UNSW dataset page](https://research.unsw.edu.au/projects/adfa-ids-datasets).
+The old ADFA link may redirect to the university homepage. This benchmark supports the Linux integer system-call traces, not ADFA-WD or Windows Security event exports.
+If the official download is unavailable, a [community mirror](https://github.com/verazuo/a-labelled-version-of-the-ADFA-LD-dataset) contains `ADFA-LD.zip`. It is not an authenticated UNSW distribution. From the repository root:
+
+```powershell
+New-Item -ItemType Directory -Path datasets -Force | Out-Null
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/verazuo/a-labelled-version-of-the-ADFA-LD-dataset/master/ADFA-LD.zip" -OutFile "datasets/ADFA-LD.zip"
+Expand-Archive -LiteralPath "datasets/ADFA-LD.zip" -DestinationPath "datasets"
+```
+
+The inspected mirror archive has SHA-256 `58D625470749344843A7F730B0875CE9B8769F6FA48F18DC4A92BD07C342EAD5`. This records the tested copy, not authenticity against the publisher. Its traces include two distinct contents with conflicting benign/attack labels. To exclude those contents from every split and record the exclusions, run:
+
+```powershell
+python backend/benchmark_adfa.py --data "datasets/ADFA-LD" --output "benchmark-results/adfa-ld" --exclude-label-conflicts
+```
+
+The default remains to stop on conflicting labels. Reports after exclusion and deduplication describe a filtered dataset, not the unmodified original benchmark.
+The publisher grants academic research use and prohibits commercial use; consult its terms and cite the listed papers when reporting research.
+
+Place the extracted files under a directory such as:
+
+```text
+datasets/ADFA-LD/
+  Training_Data_Master/
+  Validation_Data_Master/
+  Attack_Data_Master/
+```
+
+From the repository root, run (Python standard library only):
+
+```powershell
+python backend/benchmark_adfa.py --data "datasets/ADFA-LD" --output "benchmark-results/adfa-ld"
+```
+
+If extraction adds an extra directory level, point `--data` at the directory directly containing those three folders. No backend server, administrator access, VM, or RustDesk connection is required.
+
+The runner fits an unseen-system-call-pair baseline on normal training traces. It splits unique normal validation traces into benign calibration and held-out test subsets by content hash, then evaluates the held-out benign traces and all attack traces. Exact duplicates are excluded across partitions; conflicting labels fail explicitly. Related benign sessions may remain across splits, since this runner does not infer their session identities. All prefixes from a trace stay in the same split. Attack traces are never used for fitting or threshold selection.
+
+At 25%, 50%, 75%, and 100% of each trace, it selects separate detector and prognostic thresholds on benign calibration data with a default target false-positive rate of 5%. Decisions use `score > threshold`; ties may make the achieved calibration rate lower. Held-out false-positive rates can differ. Change the target with `--target-fpr 0.01` before evaluating, rather than tuning it on test results.
+
+Inspect `report.json` for precision, recall, F1, false-positive rate, average precision (a non-interpolated PR summary), confusion counts, and per-family recall. `predictions.csv` records each trace, prefix, label, scores, decisions, risk path, and confidence. Family names are inferred by removing trailing run numbers from attack directory names; verify these against your archive. Dataset labels and paths stay outside the agent input.
+
+The real `PrognosticAgent` receives one neutral event per trace and the detector score as incident risk. There is no IP evidence, so its score is the detector score multiplied by 0.7 and rounded; it should not add ranking value and rounding may create ties. Its fixed path templates and constant 0.60 confidence are not learned predictions or calibrated probabilities. This measures **attack classification from partial traces**, not attack onset, elapsed-time lead, or future attack stages. The adapter deliberately bypasses Sentinel/Analyst severity heuristics to isolate this comparison and never invokes response actions.
+
+Benchmark verification with small synthetic fixtures:
+
+```powershell
+cd backend
+python -m unittest tests.test_benchmark_adfa -v
+```
 
 Safety and governance
 

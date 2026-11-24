@@ -1,0 +1,6 @@
+# Local benchmark data and generated reports
+__pycache__/
+*.pyc
+/datasets/
+/benchmark-results/
+/backend/benchmark-results/

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "entities": [
+    {
+      "entity_id": "user:fixture-admin",
+      "entity_type": "user",
+      "canonical_id": "user:fixture-admin",
+      "as_of": "2026-11-23T11:40:00Z",
+      "asset_criticality": "normal",
+      "asset_owner": "Synthetic Test Operations",
+      "privilege_level": "admin",
+      "platform": "windows",
+      "exposure": "internal",
+      "related_assets": []
+    },
+    {
+      "entity_id": "host:fixture-workstation",
+      "entity_type": "host",
+      "canonical_id": "host:fixture-workstation",
+      "as_of": "2026-11-23T11:40:00Z",
+      "asset_criticality": "high",
+      "asset_owner": "Synthetic Test Operations",
+      "privilege_level": "user",
+      "platform": "windows",
+      "exposure": "internet",
+      "related_assets": [
+        {
+          "entity_id": "host:fixture-file-server",
+          "entity_type": "host",
+          "relation": "can_access",
+          "reachable": true,
+          "evidence_ref": "synthetic-inventory:workstation-file-server-reachability"
+        }
+      ]
+    }
+  ]
+}

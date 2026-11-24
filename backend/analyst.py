@@ -225,6 +225,7 @@ class TriageContext:
         self.last = max(times) if times else None
         self.findings: list[dict[str, Any]] = []
         self.techniques: list[str] = []
+        self.technique_evidence: dict[str, list[str]] = {}
         self.actions: list[str] = []
         self._links: dict[str, dict[str, Any]] = {}
 
@@ -235,10 +236,21 @@ class TriageContext:
     def add(self, points: float, text: str) -> None:
         self.findings.append({"points": round(points, 2), "text": text})
 
-    def technique(self, *ids: str) -> None:
+    def technique(self, *ids: str, events: Optional[Iterable[Any]] = None) -> None:
+        """Keep incident-level techniques and the records supporting each one.
+
+        Primary-record rules default to the record they inspected. Aggregate and
+        correlation rules pass their supporting records explicitly; related IDs
+        need not be present in the incident's own evidence payload.
+        """
+        evidence = [self.primary] if events is None else events
+        refs = sorted({event.event_id for event in evidence
+                       if isinstance(getattr(event, "event_id", None), str) and event.event_id})
         for technique_id in ids:
             if technique_id not in self.techniques:
                 self.techniques.append(technique_id)
+            supported = self.technique_evidence.setdefault(technique_id, [])
+            supported.extend(ref for ref in refs if ref not in supported)
 
     def action(self, text: str) -> None:
         if text not in self.actions:
@@ -316,11 +328,11 @@ def triage_failed_logons(ctx: TriageContext) -> Outcome:
 
     if count >= BRUTE_FORCE_COUNT:
         ctx.add(55, f"{count} failed logons for {who}{ctx.span()}: brute-force volume")
-        ctx.technique("T1110.001")
+        ctx.technique("T1110.001", events=ctx.events)
         verdict = SUSPICIOUS
     elif count >= REPEATED_FAILURE_COUNT:
         ctx.add(40, f"{count} failed logons for {who}{ctx.span()}: repeated guessing")
-        ctx.technique("T1110.001")
+        ctx.technique("T1110.001", events=ctx.events)
         verdict = SUSPICIOUS
     else:
         ctx.add(15, f"{_plural(count, 'failed logon')} for {who}: consistent with a mistyped password")
@@ -337,7 +349,7 @@ def triage_failed_logons(ctx: TriageContext) -> Outcome:
         targets = _distinct(item.event.user for item in spray)
         if len(targets) >= 2:
             ctx.add(15, f"The same source also failed against {len(targets)} other accounts ({', '.join(targets[:5])}): password spraying")
-            ctx.technique("T1110.003")
+            ctx.technique("T1110.003", events=[*ctx.events, *(item.event for item in spray)])
             ctx.link(spray, "same source failing against other accounts")
             verdict = SUSPICIOUS if verdict == BENIGN else verdict
 
@@ -349,7 +361,7 @@ def triage_failed_logons(ctx: TriageContext) -> Outcome:
     if successes and count >= REPEATED_FAILURE_COUNT:
         hit = successes[0].event
         ctx.add(30, f"Followed by a successful logon for {hit.user or who} from {hit.source_ip or 'the same host'}: the guessing likely succeeded")
-        ctx.technique("T1078")
+        ctx.technique("T1078", events=[item.event for item in successes])
         ctx.link(successes, "successful logon after these failures")
         ctx.action(f"Reset the password for {hit.user or who} and end its active sessions")
         ctx.action("Review what the account did after the successful logon")
@@ -397,7 +409,8 @@ def triage_successful_logon(ctx: TriageContext) -> Outcome:
     )
     if len(failures) >= REPEATED_FAILURE_COUNT:
         ctx.add(75, f"{len(failures)} failed logons for {user} came before this {kind} logon: likely compromised credentials")
-        ctx.technique("T1110", "T1078")
+        ctx.technique("T1110", events=[item.event for item in failures])
+        ctx.technique("T1078", events=ctx.events)
         ctx.link(failures, "failed logons before this success")
         if external:
             ctx.add(10, f"Logon came from public address {', '.join(external)}")
@@ -409,7 +422,8 @@ def triage_successful_logon(ctx: TriageContext) -> Outcome:
     if external:
         rdp = logon_type == "10"
         ctx.add(55 if rdp else 45, f"{kind.capitalize()} logon by {user} from public address {', '.join(external)}")
-        ctx.technique("T1021.001" if rdp else "T1078", "T1133")
+        ctx.technique("T1021.001" if rdp else "T1078", "T1133",
+                      events=[event for event in ctx.events if is_external(event.source_ip)])
         ctx.action(f"Confirm with {user} that the logon from {', '.join(external)} was theirs")
         ctx.action("Check whether the address belongs to a known VPN or partner range")
         return Outcome(SUSPICIOUS, "initial_access", f"{user} logged on from the public internet.", 0.6)
@@ -487,7 +501,7 @@ def triage_account_created(ctx: TriageContext) -> Outcome:
     if adds:
         group = message_field(adds[0].event.message, "Group Name", "Group")
         ctx.add(40, f"{new_name} was then added to the privileged group {group}")
-        ctx.technique("T1098")
+        ctx.technique("T1098", events=[item.event for item in adds])
         ctx.link(adds, "new account added to a privileged group")
         ctx.action(f"Disable {new_name} until the request is verified")
         return Outcome(MALICIOUS, "persistence", f"A new account {new_name} was created and given admin rights: a backdoor account pattern.", 0.85)
@@ -519,7 +533,7 @@ def triage_group_member_added(ctx: TriageContext) -> Outcome:
     if created:
         name = message_field(created[0].event.message, "Account Name", "New Account") or member
         ctx.add(20, f"The member is {name}, an account created shortly before")
-        ctx.technique("T1136.001")
+        ctx.technique("T1136.001", events=[item.event for item in created])
         ctx.link(created, "account created before being made privileged")
         ctx.action(f"Disable {name} until the request is verified")
         return Outcome(MALICIOUS, "persistence", f"A freshly created account was added to {group}: a backdoor account pattern.", 0.85)
@@ -833,6 +847,12 @@ def triage(
     rule = select_rule(ctx.primary)
     outcome = rule(ctx)
 
+    # Additive behavioral-only output; preserve the existing total calculation
+    # below, including its clamp and benign cap, without reconstructing bonuses.
+    behavioral_score = max(0.0, min(100.0, sum(item["points"] for item in ctx.findings)))
+    if outcome.verdict == BENIGN:
+        behavioral_score = min(behavioral_score, BENIGN_RISK_CAP)
+
     if outcome.verdict != BENIGN and (asset_context or {}).get("criticality") == "high":
         ctx.add(10, f"{ctx.primary.host} is a high-criticality asset")
     score = max(0.0, min(100.0, sum(item["points"] for item in ctx.findings)))
@@ -851,6 +871,7 @@ def triage(
         "priority": priority,
         "triage": decision,
         "risk_score": round(score, 2),
+        "behavioral_score": round(behavioral_score, 2),
         "confidence": outcome.confidence,
         "category": outcome.category,
         "summary": outcome.summary,
@@ -858,6 +879,8 @@ def triage(
         "rule": rule.__name__.removeprefix("triage_"),
         "findings": ctx.findings,
         "mitre_techniques": ctx.techniques,
+        "technique_evidence": {technique: sorted(ctx.technique_evidence.get(technique, []))
+                               for technique in ctx.techniques},
         "sentinel_candidate_techniques": len(sentinel_techniques),
         "correlations": ctx.correlations,
         "recommended_actions": ctx.actions,

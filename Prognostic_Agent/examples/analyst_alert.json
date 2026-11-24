@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "request_id": "example-request-1",
+  "alert_id": "example-alert-1",
+  "analyst_revision": "1",
+  "timestamp": "2026-11-23T12:00:00Z",
+  "anomaly_score": 82,
+  "triage_score": 70,
+  "analyst_confidence": 0.85,
+  "verdict": "suspicious",
+  "user_id": "user:alice",
+  "host_id": "host:workstation-01",
+  "source_ip": null,
+  "entities": [
+    {"entity_id": "user:alice", "entity_type": "user"},
+    {"entity_id": "host:workstation-01", "entity_type": "host"},
+    {"entity_id": "service:build", "entity_type": "service"}
+  ],
+  "normalized_events": [
+    {
+      "event_id": "event-1", "timestamp": "2026-11-23T11:55:00Z",
+      "event_type": "powershell_execution",
+      "entity_ids": ["user:alice", "host:workstation-01", "service:build"],
+      "message": "Analyst-supported suspicious PowerShell execution."
+    }
+  ],
+  "observed_techniques": [
+    {"technique_id": "T1059.001", "evidence_refs": ["event-1"]}
+  ],
+  "correlated_alert_ids": ["related-alert-1"],
+  "findings": ["Suspicious script execution supported by event-1; triage score excludes asset impact."]
+}
