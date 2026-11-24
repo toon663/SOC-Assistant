@@ -1,7 +1,7 @@
-# Prognostic Agent — Phases 1, 2 and 3
+# Prognostic Agent â€” Phases 1, 2 and 3
 
 Standalone FORECAST agent: Analyst-correlated alert -> asset context -> technical
-impact -> conditional ATT&CK paths -> structured forecast for the Analyst/BI handoff.
+impact -> conditional ATT&CK paths -> structured forecast for the Analyst handoff and proposed Orchestrator integration.
 Deterministic mode uses the Python 3.10+ standard library only. Importing the package performs no I/O.
 
 ## Run and verify
@@ -79,8 +79,8 @@ arrays are accepted and produce an abstention. Required scalar fields:
 | `schema_version` | Integer 1 |
 | `alert_id`, `analyst_revision` | Nonempty strings |
 | `timestamp` | Analyst assessment timestamp with timezone |
-| `anomaly_score`, `triage_score` | 0–100; triage score excludes asset impact, or is null when unavailable |
-| `analyst_confidence` | 0–1 evidence confidence |
+| `anomaly_score`, `triage_score` | 0â€“100; triage score excludes asset impact, or is null when unavailable |
+| `analyst_confidence` | 0â€“1 evidence confidence |
 | `verdict` | `benign`, `suspicious`, `malicious` |
 | `entities` | Full entity list: unique `entity_id`, `entity_type` (`user`, `host`, `service`) |
 | `normalized_events` | Unique `event_id`, timezone-aware `timestamp`, `event_type`, `entity_ids` |
@@ -514,7 +514,7 @@ and writes forecasts/attempts with **environment=demo only**. It prioritizes
 Analyst `suspicious`, then `malicious`, then `benign`, then unknown verdicts; within
 each group the newest persisted incident is selected first. It includes incomplete
 legacy records instead of silently dropping them: missing Analyst fields appear
-as validation errors. `--limit` accepts 1–10000 and defaults to 20. The history path
+as validation errors. `--limit` accepts 1â€“10000 and defaults to 20. The history path
 and optional results-export directory must resolve inside `Prognostic_Agent/`.
 `--no-history`, a non-demo environment and a single global behavioral-score override
 are rejected. Each incident keeps its own known/unknown behavioral provenance.
@@ -549,7 +549,7 @@ full normalized input in history as with normal forecasting. An exit code of 1
 indicates a source/configuration failure or an operational error in the batch;
 per-record validation failures remain visible in the summary and are not hidden.
 
-## Inventory proposal only — not implemented
+## Inventory proposal only â€” not implemented
 
 The local adapter already accepts flat `privilege_level`, `platform`, `exposure`,
 record `as_of`, and `related_assets`. The real backend context does not populate
@@ -1496,7 +1496,7 @@ Python callers pass `explanation_config=ExplanationConfig(enabled=True)` to
 `complete(request, *, deadline, attempt)` and must be importable/picklable for
 Windows spawn. `explanation_provider` is an injection point for offline tests.
 Disabled mode returns before provider creation, logging or credential/SDK access.
-The existing numeric engine is unchanged; agent code version is 0.3.1.
+The existing numeric engine is unchanged; agent code version is 0.4.0a1 (Stage 2a integration components only).
 
 ### Enforced explanation boundary
 
@@ -1624,35 +1624,226 @@ The embedded-hostname case uses a hostname inside a longer entity string; metada
 with the bare name is never sent. A direct `prefix-host_1-suffix` redaction probe
 also verifies substring handling and local round-trip restoration.
 
-### Backend forecast versus standalone forecast: BI proposal only
+### Backend forecast versus standalone forecast: legacy compatibility
 
-The current backend pipeline still calls `backend/agents.py::PrognosticAgent`.
-It writes **`incident.forecast`**, combining 70% of the Analyst total risk score
-with 30% IP-reputation risk (capped at 100). It supplies a generic risk path, or
-malware tactic labels when present, and an event-count-based confidence. The
-backend BI Agent currently reads that `forecast_score`, applies a criticality
-multiplier and derives a downtime heuristic. None of this calls this standalone
-agent or its optional clause-selection layer.
+There is **no built BI Agent**. BI references elsewhere in historical prose or
+diagrams describe an unbuilt component. `backend/agents.py` contains a class named
+`BIAgent`, invoked by its legacy pipeline, that calculates compatibility values.
+This class is not a separate implemented BI service and is not the integration
+target. The earlier BI-primary-consumer proposal is superseded by a direct
+Orchestrator proposal. No backend code is changed by Stage 2a.
 
-This standalone agent consumes the Analyst adapter's asset-independent behavioral
-score, enriches inventory context, gates ATT&CK transitions, ranks candidates and
-returns risk/impact, explicit statuses, evidence references, guard diagnostics,
-confidence and blast radius. It owns forecast-history storage separately from
-`soc_agents.db`; its optional summary writer is the prospective integration point.
-Its risk score already includes asset impact; its likelihood index is a ranking,
-not severity or calibrated probability. These results and the backend's scalar
-forecast are different contracts and must not be blended as interchangeable scores.
+The backend's existing `PrognosticAgent` writes `incident.forecast`, combining
+70% Analyst total risk and 30% IP-reputation risk, with generic risk paths or malware
+tactic labels. The current Orchestrator reads it through model features,
+`playbooks.incident_risk`, fallback scores and legacy plan reconstruction. Other
+readers include database persistence, ingest summaries, dashboard scoring,
+playbook explanations, compatibility calculations and ADFA/EMBER benchmarks.
+This legacy contract is not the standalone engine's ATT&CK forecast contract.
+The standalone score already includes asset impact. It must not be fed into the
+legacy score/criticality calculation as if those were interchangeable inputs.
 
-**Proposal:** after shadow-mode review, make a versioned standalone forecast the
-BI Agent's primary risk-forecast input, carried under a distinct incident field
-such as `prognostic_forecast`. Retain `incident.forecast` as explicitly labeled
-legacy/comparison data during migration. BI should receive status/reason, numeric
-assessment status, risk-score basis, asset-impact indicator, impact components,
-selected/candidate paths, confidence and blast radius. It should avoid applying
-asset criticality again to a score that already includes it. For abstention,
-preserve impact-only risk as such and do not manufacture a path; for partial or
-missing forecasts, surface missing context explicitly rather than silently mixing
-in the legacy score. Threat intelligence remains separate enrichment, not a new
-unapproved weight. Business impact remains BI's responsibility, with any revised
-calculation requiring its own approval/validation. This is a proposal only: no
-backend, BI, rule, weight, consequence-field or watcher change is implemented.
+## Direct Orchestrator components ? Stage 2a only
+
+Version `0.4.0a1` supplies independently tested components. **Nothing is wired to
+the backend, no backend configuration is changed, and no backend action path has
+new guards yet.** This is not a claim that the existing running backend is in dry
+run. LLM explanation stays off in this client regardless of backend LLM settings.
+Consequence fields, watcher, controlled endpoint tests and audit-policy changes
+remain on hold.
+
+Files:
+
+- `schemas/prognostic_forecast_for_orchestrator.v1.schema.json`: closed structural/conditional
+  schema; generated artifact is checked against the runtime definition.
+- `orchestrator_contract.py`: serializer, structural/cross-field validation,
+  identity/freshness checks, and live-use refusal for the v1 shadow-only contract.
+- `orchestrator_client.py`: local bounded worker, Analyst adapter, history and
+  immutable inventory-byte snapshot; no backend imports or external provider.
+- `orchestrator_advisory.py`: approved exact-destination slot permutation only.
+- `orchestrator_shadow_log.py`: private decision files and a summary view.
+
+### Contract and null/error handling
+
+The contract identifier is `prognostic_forecast_for_orchestrator.v1`, with
+`contract_version=1` and `execution_mode=shadow_only`. It contains persisted
+forecast ID/revision, request/alert/Analyst revision and canonical input fingerprint;
+response type/status/reason; numeric/explanation status; nullable risk and risk
+basis; asset-impact/source flags; selected path and destination; ranking index
+(explicitly not probability or severity); probability (always null); separate
+observed/reachable scope and counts; horizon/timestamps; heuristic/environment,
+issues and rule/weight/config/agent versions.
+
+Forecasts require real persisted history IDs and versions. Abstention has no path,
+destination or ranking index; retained risk is impact-only. Errors and benign
+skips have null status, risk, forecast IDs, path, index, timestamps/horizon and
+unknown scope (null, not an empty known list). There is no null-to-zero coercion.
+The receiver may validate the alert, revision, fingerprint and environment, and
+must supply its current clock to reject expired/future forecasts. Production
+historical-cutoff overrides are refused by the client. Every v1 contract refuses
+live use: non-production gives `non_production_forecast`; production gives
+`shadow_only_contract`. No backend enforcement is implied until Stage 2b.
+
+### Client usage and benign skip
+
+```python
+from pathlib import Path
+from Prognostic_Agent.orchestrator_client import OrchestratorClientConfig, OrchestratorForecastClient
+from Prognostic_Agent.orchestrator_shadow_log import ShadowDecisionLog
+
+client = OrchestratorForecastClient(OrchestratorClientConfig(
+    environment="test",
+    inventory_path=Path("Prognostic_Agent/private/RETURNED_INVENTORY/inventory.json"),
+))
+# incident is a serialized Analyst incident. baseline_options is independently
+# evidence/model/policy-qualified; this example does not run an Orchestrator.
+review = client.assess_and_log(
+    incident, baseline_options,
+    shadow_log=ShadowDecisionLog(environment="test"),
+)
+```
+
+The default client deadline is 3 seconds (configurable up to 30), shared across
+preparation and the local worker. Windows uses a dedicated kill-on-close Job
+Object; POSIX uses a process group. Worker descendants are terminated on timeout.
+The worker waits for stdin until isolation is assigned. Failure to establish
+isolation returns no forecast. There are no inline retries. A trusted injected
+transport exists for tests and must honor its deadline; the default local
+transport enforces cancellation. No endpoint action API exists in these modules.
+
+Analyst `verdict=benign` is checked **before** adapting, opening inventory/history,
+spawning or forecasting. It returns `response_type=skipped_benign`,
+`reason=skipped_benign`. Use `assess_and_log` to include skips in the shadow log.
+Low-level `assess` deliberately does not write a decision log; the caller must
+log its returned record. Errors preserve a baseline proposal, never imply low
+risk, and do not authorize actions. Logging failure is returned separately as
+`shadow_log_unavailable`. Skips never create a forecast-history row.
+
+History defaults to `private/orchestrator/forecast_history.db`, separate from
+`soc_agents.db` and the existing daily shadow history. WAL, busy timeout, schema
+migrations, retention, evidence-hash defaults and revisions reuse the existing
+history implementation. The inventory is read once; its exact bytes are hashed
+and immutable parsed records are passed to enrichment. The evaluation identity
+includes that hash and cutoff; the same input/context/cutoff replays its history
+record. Raw worker diagnostics are suppressed and errors expose fixed codes.
+
+### Approved mapping and independent eligibility
+
+Mapping version: `destination-option-priority.v1`. Its SHA-256 covers the version
+and exact mapping and is included in **every** decision record, including skips
+and errors.
+
+| Exact destination | Priority in mapped slots | Rationale |
+| --- | --- | --- |
+| T1003.001 | isolate_endpoint, disable_user | Prioritize already justified host containment and account response |
+| T1021.002 | isolate_endpoint | Prioritize containment of the observed host, never the reachable-only host |
+| T1078 | disable_user, isolate_endpoint | Prioritize an independently justified account response |
+
+Only complete/partial, valid, unexpired forecasts may inform ordering. All mapped
+options must occur exactly once and be independently eligible. Only slots already
+occupied by those mapped options are permuted; unmapped options stay at their
+**exact indices**. Other destinations, including sub-techniques of a listed parent,
+preserve baseline order. A missing/ineligible/ambiguous mapped option preserves
+order. No new action, threshold, probability, target or approval change occurs.
+
+Each baseline option is a JSON object. Mapped options require `action`,
+`target_entity_id` (a canonical **observed** entity), `eligible=true` and boolean
+`approval_required`; explicit false `selected`/policy allowance refuses reordering.
+Future backend code must derive eligibility from independent evidence and policy,
+not from this forecast. `option_id` is recommended for stable log references.
+Other fields, including probabilities, policy details and targets, travel with
+the option unchanged. Risk/index/criticality are never used as arithmetic inputs
+by the advisory. A supplied risk of 72 remains 72; null remains unknown.
+
+### Decision logs and summary
+
+Records are exclusive per-decision files under `private/orchestrator-shadow/`.
+They include forecast ID/revision/type/status/reason, numeric status, before/after
+option order, mapping version/hash, reason/limitations codes, `dry_run=true` and
+`executed_actions=[]`. Target/incident/option references are hashed for logs;
+raw target identities and arbitrary option metadata are not copied into logs.
+Unknown eligibility/approval fields remain null. This records a proposal, not
+proof that an independent eligible target was compromised.
+
+```powershell
+python -B -m Prognostic_Agent.orchestrator_shadow_log --environment test
+```
+
+Summary includes status/reason counts, order-change count/rate, skipped/error
+decisions and distinct incident counts, forecast counts, mapping versions and
+invalid/unreadable log-file counts. Decision counts include repeated reviews;
+distinct incident counts deduplicate known incident references. Decisions with no
+incident identity are counted as unbound, not invented incidents. An incident can be
+skipped in one revision and errored in another, so categories need not be disjoint.
+A zero denominator gives a null rate. Empty known lists and unknown scope are
+kept separate. No background runner, queue or watcher is installed.
+
+### Stage 2b alternatives ? proposal only
+
+| | Option A: system-wide dry run | Option B: side-channel observer |
+| --- | --- | --- |
+| Legacy decisions | Compute baseline, suppress Orchestrator effects | Preserve current legacy proposal and execution behavior |
+| Standalone result | Compare eligible option orders in dry run | Log forecast and would-be order on a detached snapshot only |
+| Side effects | Block tickets, response actions, feedback and online updates | Observer executes nothing; legacy effects can still occur under existing policy/approval |
+| Failure | Baseline proposal/log, still no execution | Observer failure cannot alter legacy decisions |
+| Backend files | config.py, api.py, agents.py, new prognostic_bridge.py, explain.py, new tests/test_prognostic_shadow.py | config.py, api.py, agents.py (observer hook only), new prognostic_bridge.py, new tests/test_prognostic_shadow.py |
+| Main risk | Suppresses existing ticket/response workflows and may delay operational response | Does not provide a system-wide no-execution guarantee; bounded observation adds latency and logs can be unavailable |
+
+**Recommendation: Option B for initial observation**, provided its narrower
+safety boundary is explicitly accepted: the forecast never influences a live
+plan, while legacy actions remain possible. If nothing anywhere may execute,
+choose A instead. B would keep the contract outside live plan/feature fields,
+pass a serialized detached snapshot to this client, and swallow observer failures
+without changing the legacy response. Its policy/approval, model probabilities,
+criticality handling and decision feedback stay untouched. No callbacks or either
+mode are implemented in Stage 2a. A later live integration remains separately
+approved work, and must reject non-production/shadow contracts at every actuator
+entry point. Legacy `incident.forecast` remains intact in both proposals.
+
+### Stage 2a read-only backend test and history report
+
+Measured on 2026-11-24 using the current checkout, with all temporary output under
+`private/test-runs/stage2a-backend/`: **63 backend tests**, zero failures/errors,
+zero expected failures, **seven unexpected passes**, zero skipped. The known
+`GathererTests.test_channel_failure_keeps_other_channels` error did not reproduce
+in this invocation. This does not rename/fix the module collision or establish
+that every import order is safe. `unittest` treats unexpected passes as a
+non-successful suite; the approval decorators were deliberately not changed.
+All seven currently decorated approval methods passed unexpectedly. The ordinary
+`test_reingestion_preserves_denial_and_decision_audit` passed normally.
+
+The harness used the existing backend test discovery order, disabled bytecode,
+set the default database to memory, placed temporary directories inside private/,
+redirected `orchestrator_model.FEEDBACK_PATH` privately, and redirected returned
+model instances' save paths while preserving original model reads and inference.
+Hashes of **all 327 tracked files before and after that isolated test run matched**.
+The backend source, decorators and database were not modified. This is a report
+of this measured run, not an assertion that the older failure counts still hold.
+
+Backend test write-capable locations inspected:
+
+| Path / output | Cause and containment |
+| --- | --- |
+| `:memory:`; temporary `approvals.db`, `test.db`, temporary service databases and SQLite journal companions | Incident repository tests; temporary output was confined under private/ |
+| Temporary fixture text/XML/log inputs | Collection and ADFA benchmark tests; temp directories cleaned by tests |
+| Temporary `report.json`, `predictions.csv` | `benchmark_adfa.run_benchmark`; output is under its temporary directory |
+| `Orchestrator_Agent/feedback/decisions.jsonl` by default | `record_feedback`; redirected privately for the measured run |
+| Loaded model `.joblib` and sibling `.tmp` by default | `ResponseModel.learn` atomic replacement; model save paths redirected privately |
+| `soc_agents.db` relative to process cwd if importing the API without a test override | Potential default initialization; this run forced the default to memory |
+| Python `__pycache__/*.pyc` without `-B` | Import side effects; disabled for this run |
+
+After the measured run only the private result JSON and verbose test log remained;
+no feedback/model file was produced. The tracked Orchestrator model has no diff
+from HEAD and its observed modification time is **2026-11-23 22:12:19 PST**.
+There is no complete before/after tracked-file manifest for every historical test
+run, so older dirty-file changes cannot responsibly be attributed to tests from
+mtime alone. The current isolated run is proven to have changed no tracked file;
+that narrower statement is not a retrospective guarantee for every earlier run.
+
+Decorator history (identities redacted): `c5ee804` adds the expected-failure
+wrapper on the re-ingestion method. Merge **`71e2632`**, at **2026-11-23 22:11 PST**,
+omits it relative to that parent while integrating the neighboring contradictory-
+playbook test; the other parent `4b6d8b4` has the undecorated method. Current
+`backend/tests/test_approvals.py` has no local diff; its mtime is
+**2026-11-23 22:12:19 PST**. These facts support merge integration as the source,
+not a later uncommitted edit, and do not prove a particular operator or intent.

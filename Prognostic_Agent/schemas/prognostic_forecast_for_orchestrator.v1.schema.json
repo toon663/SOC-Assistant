@@ -1,0 +1,995 @@
+{
+  "type": "object",
+  "properties": {
+    "contract": {
+      "const": "prognostic_forecast_for_orchestrator.v1"
+    },
+    "contract_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "execution_mode": {
+      "const": "shadow_only"
+    },
+    "request_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "alert_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "analyst_revision": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "input_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "forecast_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "forecast_revision": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "response_type": {
+      "enum": [
+        "risk_forecast",
+        "validation_error",
+        "operational_error",
+        "skipped_benign"
+      ]
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial",
+        "abstained",
+        null
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "numeric_assessment_status": {
+      "enum": [
+        "complete",
+        "partial",
+        "unavailable"
+      ]
+    },
+    "explanation_status": {
+      "enum": [
+        "deterministic",
+        "llm_selected",
+        "unavailable"
+      ]
+    },
+    "risk_score": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "risk_score_basis": {
+      "enum": [
+        "contextual_risk_assessment",
+        "impact_assessment_only",
+        null
+      ]
+    },
+    "risk_score_may_include_asset_impact": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "behavioral_score_source": {
+      "enum": [
+        "supplied",
+        "unknown"
+      ]
+    },
+    "selected_path": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "starting_technique": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^T\\d{4}(?:\\.\\d{3})?$"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "technique_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^T\\d{4}(?:\\.\\d{3})?$"
+              },
+              "rule_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "technique_id",
+              "rule_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source_entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "candidate_id",
+        "starting_technique",
+        "steps",
+        "source_entity_ids",
+        "evidence_refs"
+      ],
+      "additionalProperties": false
+    },
+    "destination_technique": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "pattern": "^T\\d{4}(?:\\.\\d{3})?$"
+    },
+    "likelihood_index": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "likelihood_index_meaning": {
+      "const": "candidate_ranking_not_probability_or_severity"
+    },
+    "probability": {
+      "type": "null"
+    },
+    "blast_radius": {
+      "type": "object",
+      "properties": {
+        "observed_entities": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "entity_type": {
+                "enum": [
+                  "user",
+                  "host",
+                  "service"
+                ]
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "source_entity_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            },
+            "required": [
+              "entity_id",
+              "entity_type",
+              "evidence_refs",
+              "source_entity_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "potentially_reachable_entities": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "entity_type": {
+                "enum": [
+                  "user",
+                  "host",
+                  "service"
+                ]
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "source_entity_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            },
+            "required": [
+              "entity_id",
+              "entity_type",
+              "evidence_refs",
+              "source_entity_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "observed_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "potentially_reachable_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "inventory_coverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "truncated": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "observed_meaning": {
+          "const": "present_in_evidence_not_proven_compromise"
+        },
+        "reachable_meaning": {
+          "const": "potentially_reachable_not_proven_compromise"
+        }
+      },
+      "required": [
+        "observed_entities",
+        "potentially_reachable_entities",
+        "observed_count",
+        "potentially_reachable_count",
+        "inventory_coverage",
+        "truncated",
+        "observed_meaning",
+        "reachable_meaning"
+      ],
+      "additionalProperties": false
+    },
+    "time_horizon": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "minLength": 1,
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "minLength": 1,
+          "format": "date-time"
+        },
+        "hours": {
+          "type": "number",
+          "minimum": 1e-06
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "hours",
+        "method"
+      ],
+      "additionalProperties": false
+    },
+    "generated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "format": "date-time"
+    },
+    "forecast_as_of": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "format": "date-time"
+    },
+    "heuristic": {
+      "type": "boolean",
+      "const": true
+    },
+    "environment": {
+      "enum": [
+        "test",
+        "demo",
+        "production"
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "code",
+          "detail"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "versions": {
+      "type": "object",
+      "properties": {
+        "agent": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "rules": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "rules_hash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "weights": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "weights_hash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "config": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "config_hash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "agent",
+        "rules",
+        "rules_hash",
+        "weights",
+        "weights_hash",
+        "config",
+        "config_hash"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "contract",
+    "contract_version",
+    "execution_mode",
+    "request_id",
+    "alert_id",
+    "analyst_revision",
+    "input_fingerprint",
+    "forecast_id",
+    "forecast_revision",
+    "response_type",
+    "status",
+    "reason",
+    "numeric_assessment_status",
+    "explanation_status",
+    "risk_score",
+    "risk_score_basis",
+    "risk_score_may_include_asset_impact",
+    "behavioral_score_source",
+    "selected_path",
+    "destination_technique",
+    "likelihood_index",
+    "likelihood_index_meaning",
+    "probability",
+    "blast_radius",
+    "time_horizon",
+    "generated_at",
+    "forecast_as_of",
+    "heuristic",
+    "environment",
+    "issues",
+    "versions"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "prognostic_forecast_for_orchestrator.v1",
+  "$comment": "Cross-field consistency, binding, freshness and live-use refusal are additionally enforced by validate_contract/assert_live_usable.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "response_type": {
+            "const": "risk_forecast"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "forecast_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "forecast_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "alert_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "analyst_revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "input_fingerprint": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "partial",
+              "abstained"
+            ]
+          },
+          "time_horizon": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "minLength": 1,
+                "format": "date-time"
+              },
+              "end": {
+                "type": "string",
+                "minLength": 1,
+                "format": "date-time"
+              },
+              "hours": {
+                "type": "number",
+                "minimum": 1e-06
+              },
+              "method": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "hours",
+              "method"
+            ],
+            "additionalProperties": false
+          },
+          "generated_at": {
+            "type": "string",
+            "minLength": 1,
+            "format": "date-time"
+          },
+          "forecast_as_of": {
+            "type": "string",
+            "minLength": 1,
+            "format": "date-time"
+          },
+          "versions": {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rules": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rules_hash": {
+                "type": "string",
+                "minLength": 1
+              },
+              "weights": {
+                "type": "string",
+                "minLength": 1
+              },
+              "weights_hash": {
+                "type": "string",
+                "minLength": 1
+              },
+              "config": {
+                "type": "string",
+                "minLength": 1
+              },
+              "config_hash": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "agent",
+              "rules",
+              "rules_hash",
+              "weights",
+              "weights_hash",
+              "config",
+              "config_hash"
+            ],
+            "additionalProperties": false
+          },
+          "blast_radius": {
+            "properties": {
+              "observed_entities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "entity_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entity_type": {
+                      "enum": [
+                        "user",
+                        "host",
+                        "service"
+                      ]
+                    },
+                    "evidence_refs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "uniqueItems": true
+                    },
+                    "source_entity_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "entity_id",
+                    "entity_type",
+                    "evidence_refs",
+                    "source_entity_id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "potentially_reachable_entities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "entity_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "entity_type": {
+                      "enum": [
+                        "user",
+                        "host",
+                        "service"
+                      ]
+                    },
+                    "evidence_refs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "uniqueItems": true
+                    },
+                    "source_entity_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "entity_id",
+                    "entity_type",
+                    "evidence_refs",
+                    "source_entity_id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "observed_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "potentially_reachable_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "inventory_coverage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "truncated": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "forecast_id": {
+            "type": "null"
+          },
+          "forecast_revision": {
+            "type": "null"
+          },
+          "status": {
+            "type": "null"
+          },
+          "risk_score": {
+            "type": "null"
+          },
+          "risk_score_basis": {
+            "type": "null"
+          },
+          "risk_score_may_include_asset_impact": {
+            "type": "null"
+          },
+          "selected_path": {
+            "type": "null"
+          },
+          "destination_technique": {
+            "type": "null"
+          },
+          "likelihood_index": {
+            "type": "null"
+          },
+          "time_horizon": {
+            "type": "null"
+          },
+          "generated_at": {
+            "type": "null"
+          },
+          "forecast_as_of": {
+            "type": "null"
+          },
+          "numeric_assessment_status": {
+            "const": "unavailable"
+          },
+          "explanation_status": {
+            "const": "unavailable"
+          },
+          "behavioral_score_source": {
+            "const": "unknown"
+          },
+          "blast_radius": {
+            "properties": {
+              "observed_entities": {
+                "type": "null"
+              },
+              "potentially_reachable_entities": {
+                "type": "null"
+              },
+              "observed_count": {
+                "type": "null"
+              },
+              "potentially_reachable_count": {
+                "type": "null"
+              },
+              "inventory_coverage": {
+                "type": "null"
+              },
+              "truncated": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "complete"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "numeric_assessment_status": {
+            "const": "complete"
+          },
+          "risk_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "abstained"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "selected_path": {
+            "type": "null"
+          },
+          "destination_technique": {
+            "type": "null"
+          },
+          "likelihood_index": {
+            "type": "null"
+          },
+          "risk_score_basis": {
+            "const": "impact_assessment_only"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "complete",
+              "partial"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "selected_path": {
+            "type": "object",
+            "properties": {
+              "candidate_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "starting_technique": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^T\\d{4}(?:\\.\\d{3})?$"
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "technique_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^T\\d{4}(?:\\.\\d{3})?$"
+                    },
+                    "rule_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "technique_id",
+                    "rule_id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "source_entity_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "candidate_id",
+              "starting_technique",
+              "steps",
+              "source_entity_ids",
+              "evidence_refs"
+            ],
+            "additionalProperties": false
+          },
+          "destination_technique": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^T\\d{4}(?:\\.\\d{3})?$"
+          },
+          "likelihood_index": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "risk_score_basis": {
+            "const": "contextual_risk_assessment"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "risk_score": {
+            "type": "number"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "risk_score_may_include_asset_impact": {
+            "const": true
+          },
+          "behavioral_score_source": {
+            "const": "supplied"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "response_type": {
+            "const": "skipped_benign"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "const": "skipped_benign"
+          }
+        }
+      }
+    }
+  ]
+}
