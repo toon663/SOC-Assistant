@@ -230,7 +230,7 @@ def validate_response(response):
         "response_type": {"risk_forecast"},
         "status": {"complete", "partial", "abstained"},
         "numeric_assessment_status": {"complete", "partial", "unavailable"},
-        "explanation_status": {"deterministic", "llm", "unavailable"},
+        "explanation_status": {"deterministic", "llm_selected", "unavailable"},
     }.items():
         if response.get(key) not in choices:
             raise ValueError("Invalid response " + key)

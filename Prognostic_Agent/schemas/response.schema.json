@@ -65,7 +65,7 @@
         "status": {"enum": ["complete", "partial", "abstained"]},
         "reason": {"type": "string", "minLength": 1}, "reason_detail": {"type": "string", "minLength": 1},
         "numeric_assessment_status": {"enum": ["complete", "partial", "unavailable"]},
-        "explanation_status": {"enum": ["deterministic", "llm", "unavailable"]},
+        "explanation_status": {"enum": ["deterministic", "llm_selected", "unavailable"]},
         "risk_score": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
         "predicted_path": {"type": ["object", "null"]}, "candidate_paths": {"type": "array", "items": {"type": "object"}},
         "likelihood": {"type": ["object", "null"]},

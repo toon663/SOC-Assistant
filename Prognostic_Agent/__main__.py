@@ -57,7 +57,7 @@ def main(argv=None):
     llm = parser.add_mutually_exclusive_group()
     llm.add_argument("--no-llm", action="store_true", help="Deterministic only (the default); no SDK or credentials required")
     llm.add_argument("--llm-explanation", action="store_true", help="Opt in to bounded, pseudonymized Anthropic explanation selection")
-    parser.add_argument("--llm-model", default="claude-opus-5-5")
+    parser.add_argument("--llm-model", default="claude-haiku-5-5")
     config, metadata, args = None, None, None
     try:
         args = parser.parse_args(argv)

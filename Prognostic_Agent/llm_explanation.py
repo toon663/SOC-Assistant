@@ -7,10 +7,13 @@ rejectable by construction rather than relying on natural-language policing.
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+import logging
 import math
 import multiprocessing
+import os
 from pathlib import Path
 import re
+import sys
 import time
 import uuid
 
@@ -26,7 +29,7 @@ SYSTEM = ("Explain existing deterministic candidates only. Return JSON with exac
 @dataclass(frozen=True)
 class ExplanationConfig:
     enabled: bool = False
-    model: str = "claude-opus-5-5"  # Same default string as backend/llm_analyst.py.
+    model: str = "claude-haiku-5-5"  # Independent low-cost default; caller may override.
     timeout_seconds: float = 10.0
     max_attempts: int = 2
     audit_directory: Path = PRIVATE_DIR / "llm-payloads"
@@ -45,6 +48,19 @@ class ExplanationConfig:
 
 class PrivacyError(ValueError):
     pass
+
+
+def _credential_values():
+    # Called only inside an explicitly enabled explanation path. Never logged.
+    return tuple(value for name in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+                 if (value := os.environ.get(name)))
+
+
+def _contains_credential(value):
+    encoded = canonical_json(value)
+    # Check JSON-escaped and literal forms without reporting a matched value.
+    return any(secret in encoded or canonical_json(secret)[1:-1] in encoded
+               for secret in _credential_values())
 
 
 class Pseudonymizer:
@@ -81,6 +97,9 @@ class Pseudonymizer:
     def restore(self, text):
         return re.sub(r"\b(?:user|host|service|sid|ip)_\d+\b", lambda m: self.reverse.get(m.group(), m.group()), text)
 
+    def __getstate__(self):
+        raise TypeError("Alias maps are memory-only and must not be serialized")
+
     def audit(self, body):
         text = canonical_json(body).casefold()
         return {"clean": not any(raw in text for raw in self.forward),
@@ -111,7 +130,9 @@ def prepare(response, alert):
     def collect(value):
         if isinstance(value, dict):
             for key, item in value.items():
-                kind = "sid" if "sid" in key.lower() else ("ip" if key.lower().endswith(("_ip", "ipaddress")) else None)
+                lower = key.lower()
+                kind = ("sid" if "sid" in lower else ("ip" if lower.endswith(("_ip", "ipaddress")) else
+                        ("host" if lower in {"hostname", "host_name", "computername"} else None)))
                 if kind and item is not None:
                     if not isinstance(item, str):
                         raise PrivacyError("unrepresentable_identity")
@@ -186,10 +207,19 @@ class AnthropicExplanationProvider:
 
 
 def _worker(provider, request, deadline, attempt, sender):
+    # Silence native stdout/stderr as well as Python logging before SDK imports.
+    # Raw SDK diagnostics are not a supported output channel; parent receives
+    # only validated JSON or a fixed error marker. No redirected file is kept.
     try:
+        with open(os.devnull, "w") as sink:
+            for stream in (sys.stdout, sys.stderr):
+                os.dup2(sink.fileno(), stream.fileno())
+            sys.stdout.flush()
+            sys.stderr.flush()
+            logging.disable(sys.maxsize)
         result = provider.complete(request, deadline=deadline, attempt=attempt)
         encoded = canonical_json(result)
-        if len(encoded) > 65536:
+        if len(encoded) > 65536 or _contains_credential(result):
             raise ValueError("output_too_large")
         sender.send(("ok", encoded))
     except Exception:
@@ -248,6 +278,8 @@ def explain_forecast(response, alert, *, config=None, provider=None):
         projection, render, aliases = prepare(response, alert)
         request = {"model": config.model, "max_tokens": 1024, "system": SYSTEM,
                    "messages": [{"role": "user", "content": canonical_json(projection)}]}
+        if _contains_credential(request):
+            return fallback("llm_credential_skipped")
         audit = aliases.audit(request)
         if not audit["clean"] or audit["raw_event_fields_present"]:
             return fallback("llm_privacy_skipped")
@@ -258,6 +290,8 @@ def explain_forecast(response, alert, *, config=None, provider=None):
             return fallback("llm_timeout")
         try:
             directory = private_path(config.audit_directory)
+            if _contains_credential(str(directory)):
+                return fallback("llm_credential_skipped")
             path = directory / (uuid.uuid4().hex + ".json")
             # Fail closed: journal the exact application request before starting
             # any provider. This is an attempted-send journal, not proof of delivery.
@@ -296,7 +330,11 @@ def explain_forecast(response, alert, *, config=None, provider=None):
                                  "candidate_explanations": comments,
                                  "llm": {"provider": "anthropic" if provider is None else "injected", "model": config.model,
                                          "mode": "validated_clause_selection", "attempts": attempt, "payload_audit_refs": audit_refs}}
-        result["explanation_status"] = "llm"
+        if _contains_credential(result["explanation"]):
+            # Do not return a newly rendered explanation containing a credential.
+            result["explanation"] = deepcopy(response["explanation"])
+            return fallback("llm_credential_skipped")
+        result["explanation_status"] = "llm_selected"
         return result
     return fallback("llm_provider_error")
 
@@ -315,6 +353,12 @@ def audit_logged_payloads(directory, *, forbidden_strings=()):
         checked += 1
         try:
             journal = json.loads(path.read_text(encoding="utf-8"))
+            if set(journal) != {"schema_version", "attempt", "transport", "request", "request_sha256", "privacy_audit"}:
+                raise ValueError()
+            if set(journal["privacy_audit"]) != {"clean", "identity_count", "raw_event_fields_present"}:
+                raise ValueError()
+            if _contains_credential(journal):
+                raise ValueError()
             body = journal["request"]
             if set(body) != {"model", "max_tokens", "system", "messages"} or body["system"] != SYSTEM or body["max_tokens"] != 1024:
                 raise ValueError()
@@ -340,7 +384,7 @@ def audit_logged_payloads(directory, *, forbidden_strings=()):
                     raise ValueError()
             if journal["request_sha256"] != content_hash(body):
                 raise ValueError()
-            text = canonical_json(body).casefold()
+            text = canonical_json(journal).casefold()
             if any(secret.casefold() in text for secret in forbidden_strings if secret):
                 raise ValueError()
         except (ValueError, KeyError, TypeError, OSError):

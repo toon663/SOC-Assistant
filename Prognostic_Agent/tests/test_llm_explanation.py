@@ -42,7 +42,7 @@ class LLMExplanationTests(unittest.TestCase):
 
     def test_success_changes_only_explanation_fields(self):
         result = self.invoke()
-        self.assertEqual(result["explanation_status"], "llm")
+        self.assertEqual(result["explanation_status"], "llm_selected")
         self.assertEqual(protected(result), protected(self.baseline))
         self.assertEqual(result["issues"], self.baseline["issues"])
         self.assertEqual({k for k in result if result[k] != self.baseline[k]}, {"explanation", "explanation_status"})
@@ -81,7 +81,7 @@ class LLMExplanationTests(unittest.TestCase):
 
     def test_retry_uses_remaining_total_budget_and_logs_both_attempts(self):
         result = self.invoke("retry")
-        self.assertEqual(result["explanation_status"], "llm")
+        self.assertEqual(result["explanation_status"], "llm_selected")
         self.assertEqual(result["explanation"]["llm"]["attempts"], 2)
         self.assertEqual(len(list(self.directory.glob("*.json"))), 2)
         self.assertEqual(protected(result), protected(self.baseline))
@@ -113,7 +113,7 @@ class LLMExplanationTests(unittest.TestCase):
         request["normalized_events"][0]["message"] = "RAW-EVENT-DO-NOT-SEND powershell -enc PRIVATE-COMMAND"
         request["normalized_events"][0]["metadata"] = {"subject_sid": "S-1-5-21-123-456"}
         response = explain_forecast(self.baseline, request, config=self.config, provider=FakeExplanationProvider())
-        self.assertEqual(response["explanation_status"], "llm")
+        self.assertEqual(response["explanation_status"], "llm_selected")
         projection, _, aliases = prepare(self.baseline, request)
         logs = list(self.directory.glob("*.json"))
         self.assertEqual(len(logs), 1)
@@ -151,7 +151,7 @@ class LLMExplanationTests(unittest.TestCase):
                 stat.pop("elapsed_ms", None)
             return canonical_json(value)
         self.assertEqual(assessment(base), assessment(result))
-        self.assertEqual(result["explanation_status"], "llm")
+        self.assertEqual(result["explanation_status"], "llm_selected")
 
     def test_service_persists_and_replays_without_duplicate_llm_call(self):
         with ForecastHistory(self.directory / "history.db", environment="test") as history:
@@ -159,7 +159,7 @@ class LLMExplanationTests(unittest.TestCase):
                                       explanation_config=self.config, explanation_provider=FakeExplanationProvider())
             first = service.assess(self.request, asset_provider=fixture.MemoryProvider(fixture.inventory()), forecast_as_of=fixture.AS_OF)
             second = service.assess(self.request, asset_provider=fixture.MemoryProvider(fixture.inventory()), forecast_as_of=fixture.AS_OF)
-        self.assertEqual(first["explanation_status"], "llm")
+        self.assertEqual(first["explanation_status"], "llm_selected")
         self.assertTrue(second["history"]["idempotent_replay"])
         self.assertEqual(first["history"]["forecast_id"], second["history"]["forecast_id"])
         self.assertEqual(len(list(self.directory.glob("*.json"))), 1)

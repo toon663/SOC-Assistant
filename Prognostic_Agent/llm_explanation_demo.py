@@ -26,7 +26,7 @@ def main():
     request = adapt_analyst_incident(incident, behavioral_score=settings["behavioral_score"], technique_evidence=settings["technique_evidence"])
     config = ExplanationConfig(enabled=True, audit_directory=directory / "payloads")
     fake = explain_forecast(baseline, request, config=config, provider=FakeExplanationProvider())
-    if fake["explanation_status"] != "llm":
+    if fake["explanation_status"] != "llm_selected":
         raise RuntimeError("Fake-provider explanation did not validate")
     changed = [key for key in baseline if baseline[key] != fake[key]]
     if set(changed) != {"explanation", "explanation_status"}:

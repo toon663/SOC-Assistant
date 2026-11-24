@@ -3,7 +3,7 @@
 import json
 
 SCHEMA_VERSION = 1
-AGENT_VERSION = "0.3.0"
+AGENT_VERSION = "0.3.1"
 CONFIG_VERSION = "3"
 
 

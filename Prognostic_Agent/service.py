@@ -113,7 +113,7 @@ class ForecastService:
                                 "cutoff": cutoff, "evaluation_id": evaluation_id}) if normalized else None
             if key and self.explanation_config is not None and self.explanation_config.enabled:
                 key = content_hash({"numeric_key": key, "explanation_profile": {
-                    "version": 1, "model": self.explanation_config.model,
+                    "version": 2, "model": self.explanation_config.model,
                     "provider": type(self.explanation_provider).__qualname__ if self.explanation_provider is not None else "anthropic"}})
             if key:
                 response = self.history.find(key)

@@ -389,7 +389,7 @@ explicitly marks the combined score. Legacy history is conservatively marked
 `unknown`, with any existing numeric score marked as potentially including impact.
 
 `numeric_assessment_status` (`complete`, `partial`, `unavailable`) is independent
-of `explanation_status` (`deterministic`, future `llm`, or `unavailable`). Phase 1
+of `explanation_status` (`deterministic`, `llm_selected`, or `unavailable`). Phase 1
 always supplies a deterministic explanation. A later explanation failure must
 not imply incomplete numeric work.
 
@@ -1449,16 +1449,35 @@ T1087/T1069 rules remain out of scope. The daily runner and all replay/demo
 commands continue deterministic-only. No controlled test or audit setting is
 invoked by this layer.
 
-The provider is **Anthropic**, using the same `anthropic.Anthropic` SDK and default
-model string **`claude-opus-5-5`** found in `backend/llm_analyst.py`. The backend class
-is not imported: its triage tools, raw evidence, 120-second timeout and SDK retries
-are unsuitable here. The separate `ExplanationConfig` setting does not change
-`SOC_LLM_TRIAGE` or numeric `ForecastConfig`/config hashes. The SDK reads credentials
-from its normal credential chain, normally `ANTHROPIC_API_KEY` inherited by the
-Python process. The backend comments also mention an `ant auth login` profile;
-this agent does not read profiles itself or guarantee support in every installed
-SDK version. Missing credentials, SDK or inaccessible model produce deterministic
-fallback. No provider/model availability has been tested with a live call.
+The provider is **Anthropic**, using the same `anthropic.Anthropic` SDK as
+`backend/llm_analyst.py`. The standalone default is independently configurable:
+**`claude-haiku-5-5`**, via `ExplanationConfig(model=...)` or `--llm-model`.
+The backend's model/configuration is unchanged. The backend class is not imported:
+its triage tools, raw evidence, 120-second timeout and SDK retries are unsuitable
+here. The separate setting does not change `SOC_LLM_TRIAGE` or numeric
+`ForecastConfig`/config hashes. The SDK reads its normal credential chain,
+normally `ANTHROPIC_API_KEY`. Backend comments also mention an `ant auth login`
+profile; this agent does not read profiles itself or guarantee support in every
+installed SDK version. Missing credentials, SDK or inaccessible model produce
+deterministic fallback. No live provider call was used for verification.
+
+Cost trade-off, checked against Anthropic's model overview on 2026-11-24:
+
+| Model | Input / million tokens | Output / million tokens |
+| --- | ---: | ---: |
+| Haiku 5.5, prompts at most 100,000 tokens | $0.10 | $0.50 |
+| Opus 5.5 | $4.00 | $20.00 |
+
+For these short, non-cached requests, those list rates make Haiku about 40 times
+cheaper per token. Example only: 1,000 input + 300 output tokens costs roughly
+$0.00025 on Haiku versus $0.01 on Opus, before retries or other billing adjustments.
+Haiku's larger-prompt tier costs more; these examples do not assume that tier.
+The layer only selects existing clauses, so a more capable reasoning model cannot
+change analysis or add facts. Whether its choices improve readability enough to
+justify any cost requires human evaluation; deterministic mode costs no API tokens.
+No actual token usage/cost is inferred from the fake provider. Sources:
+[Haiku 5.5 and model comparison](https://platform.claude.com/docs/en/models/haiku-5-5/overview),
+[pricing](https://platform.claude.com/docs/en/about-claude/pricing).
 
 Optional installation, only if you choose to enable real provider calls:
 `python -m pip install anthropic`. It is deliberately absent from required
@@ -1469,7 +1488,7 @@ https://github.com/anthropics/anthropic-sdk-python .
 Explicit CLI opt-in (this command would make an external call; it was NOT run):
 
 ```powershell
-python -B -m Prognostic_Agent --input Prognostic_Agent/examples/analyst_alert.json --asset-inventory Prognostic_Agent/assets/sample_asset_inventory.json --as-of 2026-11-23T12:00:00Z --environment test --no-history --llm-explanation --llm-model claude-opus-5-5
+python -B -m Prognostic_Agent --input Prognostic_Agent/examples/analyst_alert.json --asset-inventory Prognostic_Agent/assets/sample_asset_inventory.json --as-of 2026-11-23T12:00:00Z --environment test --no-history --llm-explanation --llm-model claude-haiku-5-5
 ```
 
 Python callers pass `explanation_config=ExplanationConfig(enabled=True)` to
@@ -1477,7 +1496,7 @@ Python callers pass `explanation_config=ExplanationConfig(enabled=True)` to
 `complete(request, *, deadline, attempt)` and must be importable/picklable for
 Windows spawn. `explanation_provider` is an injection point for offline tests.
 Disabled mode returns before provider creation, logging or credential/SDK access.
-The existing numeric engine is unchanged; agent code version is 0.3.0.
+The existing numeric engine is unchanged; agent code version is 0.3.1.
 
 ### Enforced explanation boundary
 
@@ -1497,11 +1516,11 @@ these approved clauses with the original candidate/evidence references and
 locally restores aliases. This permits presentation refinement, not novel
 free-form security reasoning or new facts.
 
-Successful calls change only `explanation` and `explanation_status=llm`.
+Successful calls change only `explanation` and `explanation_status=llm_selected`.
 Rejected/failed/timed-out calls retain the exact deterministic explanation,
 set `explanation_status=deterministic`, and append a redacted issue:
 `llm_output_rejected`, `llm_provider_error`, `llm_timeout`,
-`llm_privacy_skipped` or `llm_audit_unavailable`. They never alter risk/likelihood,
+`llm_privacy_skipped`, `llm_credential_skipped` or `llm_audit_unavailable`. They never alter risk/likelihood,
 `numeric_assessment_status`, status, reason, candidate order, selected path,
 entities, techniques or abstention. No candidates means no call.
 
@@ -1554,3 +1573,86 @@ a comparison and payload privacy audit under a new `private/phase3-review/` run.
 It asserts byte equality of all non-explanation fields, with identical scores,
 status/reason, numeric completeness, paths and diagnostics. Nothing is run on
 real endpoint events and no external call occurs.
+
+### Clause-selection status and compatibility
+
+`explanation_status=llm_selected` means an LLM selected approved clauses; it does
+not mean the model generated their prose. `deterministic` is unchanged. The old
+`llm` status is rejected for new forecasts. Historical 0.3.0 records are not
+rewritten; their original version/status remains visible when reading history.
+Versioned explanation-profile identities prevent silently reusing old selections.
+
+### Alias and credential boundaries
+
+The alias map lives only in the caller's memory. Only the closed pseudonymized
+projection enters the child process; the map is never passed to it, journaled,
+returned in forecasts, or saved to history. Default object representation contains
+no identities, and direct pickle/JSON serialization of the map is rejected.
+Restored identifiers in a local explanation are expected and are not a stored
+alias-to-identity mapping.
+
+For the optional LLM layer's **agent-managed** request journals, returned errors,
+and captured provider output: configured `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`
+values are checked before journaling a request, before returning child output and
+before returning the rendered explanation. SDK Python logging is disabled in the
+isolated child; its native stdout/stderr go to the null device. Exceptions produce
+fixed markers, not raw messages. The journal auditor checks the entire journal,
+including metadata, against the configured credential values. Synthetic-sentinel
+tests exercise provider stdout, stderr, logger output, exceptions and reply bodies;
+only a pass/fail result is printed. Disabled mode does not read credentials.
+
+This is a scoped code-and-test confirmation, not a claim about arbitrary caller
+code, other programs, OS crash/memory dumps, inherited secrets already present in
+unrelated input, or malicious custom provider modules that write files directly.
+Injected providers are trusted application code, not a sandbox. No real key is
+read back or printed to prove these tests.
+
+### Six-case offline payload review
+
+```powershell
+python -B -m Prognostic_Agent.llm_privacy_review
+```
+
+This produces complete, partial, abstained, domain-username, embedded-hostname,
+and stale-asset-partial forecasts using hand-authored synthetic input. There are
+**five payload journals for six forecasts**: abstention has no candidates and must
+not call a provider or produce a payload. Every other call uses a fake provider.
+The review validates each exact journal and checks forbidden identity/message
+strings, hashes, map fields and a hostname substring round trip. It saves a table
+and full deterministic/selected forecast pairs under a new private review run.
+The embedded-hostname case uses a hostname inside a longer entity string; metadata
+with the bare name is never sent. A direct `prefix-host_1-suffix` redaction probe
+also verifies substring handling and local round-trip restoration.
+
+### Backend forecast versus standalone forecast: BI proposal only
+
+The current backend pipeline still calls `backend/agents.py::PrognosticAgent`.
+It writes **`incident.forecast`**, combining 70% of the Analyst total risk score
+with 30% IP-reputation risk (capped at 100). It supplies a generic risk path, or
+malware tactic labels when present, and an event-count-based confidence. The
+backend BI Agent currently reads that `forecast_score`, applies a criticality
+multiplier and derives a downtime heuristic. None of this calls this standalone
+agent or its optional clause-selection layer.
+
+This standalone agent consumes the Analyst adapter's asset-independent behavioral
+score, enriches inventory context, gates ATT&CK transitions, ranks candidates and
+returns risk/impact, explicit statuses, evidence references, guard diagnostics,
+confidence and blast radius. It owns forecast-history storage separately from
+`soc_agents.db`; its optional summary writer is the prospective integration point.
+Its risk score already includes asset impact; its likelihood index is a ranking,
+not severity or calibrated probability. These results and the backend's scalar
+forecast are different contracts and must not be blended as interchangeable scores.
+
+**Proposal:** after shadow-mode review, make a versioned standalone forecast the
+BI Agent's primary risk-forecast input, carried under a distinct incident field
+such as `prognostic_forecast`. Retain `incident.forecast` as explicitly labeled
+legacy/comparison data during migration. BI should receive status/reason, numeric
+assessment status, risk-score basis, asset-impact indicator, impact components,
+selected/candidate paths, confidence and blast radius. It should avoid applying
+asset criticality again to a score that already includes it. For abstention,
+preserve impact-only risk as such and do not manufacture a path; for partial or
+missing forecasts, surface missing context explicitly rather than silently mixing
+in the legacy score. Threat intelligence remains separate enrichment, not a new
+unapproved weight. Business impact remains BI's responsibility, with any revised
+calculation requiring its own approval/validation. This is a proposal only: no
+backend, BI, rule, weight, consequence-field or watcher change is implemented.

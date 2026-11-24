@@ -1,5 +1,8 @@
 """Offline-only provider used by Phase 3 tests and the synthetic comparison."""
 import json
+import logging
+import os
+import sys
 import time
 
 
@@ -9,6 +12,13 @@ class FakeExplanationProvider:
 
     def complete(self, request, *, deadline, attempt):
         # This fake never creates a client/socket or imports an optional SDK.
+        if self.mode.startswith("credential_"):
+            secret = os.environ.get("ANTHROPIC_API_KEY", "")
+            print(secret, flush=True)
+            print(secret, file=sys.stderr, flush=True)
+            logging.critical(secret)
+            if self.mode == "credential_error":
+                raise RuntimeError(secret)
         if self.mode == "timeout":
             time.sleep(30)
         if self.mode == "error" or (self.mode == "retry" and attempt == 1):
@@ -28,4 +38,6 @@ class FakeExplanationProvider:
             result["candidate_comments"][0]["comment_ids"].append("compromise_confirmed")
         elif self.mode == "invalid":
             result = ["not an object"]
+        elif self.mode == "credential_reply":
+            result["credential"] = os.environ.get("ANTHROPIC_API_KEY", "")
         return result

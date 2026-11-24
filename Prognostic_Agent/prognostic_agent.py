@@ -25,15 +25,22 @@ REASONS = {
     "below_candidate_threshold": "All candidate paths fall below the configured heuristic acceptance threshold.",
 }
 
+DETERMINISTIC_CAVEATS = (
+    "Forecast paths are conditional hypotheses, not observed compromise.",
+    "Likelihood indices are heuristic rankings, not probabilities or severity measures.",
+    "Host protections may prevent any forecast step.",
+)
+
 
 def _explain(paths, reason):
+    caveats = "\n".join(DETERMINISTIC_CAVEATS)
     if reason:
-        return {"summary": REASONS[reason], "candidate_explanations": []}
+        return {"summary": REASONS[reason] + "\n" + caveats, "candidate_explanations": []}
     return {
-        "summary": "Eligible paths are conditional hypotheses. Likelihood indices are heuristic rankings, not probabilities or evidence of future compromise.",
+        "summary": caveats,
         "candidate_explanations": [
             {"candidate_id": path["candidate_id"], "evidence_refs": path["evidence_refs"],
-             "text": " Starting from " + path["starting_technique"] + ": " + " ".join(step["rationale"] for step in path["steps"]),
+             "text": " Starting from " + path["starting_technique"] + ": " + " ".join(step["rationale"] for step in path["steps"]) + "\n" + caveats,
              "assumptions": sorted({item for step in path["steps"] for item in step["assumptions"]})}
             for path in paths
         ],
