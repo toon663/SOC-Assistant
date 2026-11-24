@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Caller-supplied event-bound authentication guard assertions",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "bindings"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "bindings": {"type": "array", "items": {"$ref": "#/$defs/binding"}}
+  },
+  "$comment": "Runtime additionally checks unique technique/seed bindings, supplied entity/evidence references, seed-subject binding, and timezone-aware timestamps. Source names are provenance, not producer authentication.",
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "stamp": {"type": "string", "format": "date-time"},
+    "state": {"type": ["boolean", "null"]},
+    "common": {
+      "type": "object", "required": ["source", "as_of", "evidence_refs"],
+      "properties": {
+        "source": {"$ref": "#/$defs/text"},
+        "as_of": {"$ref": "#/$defs/stamp"},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/text"}}
+      }
+    },
+    "correlation": {
+      "allOf": [{"$ref": "#/$defs/common"}], "unevaluatedProperties": false,
+      "required": ["activity", "event_count", "window_start", "window_end"],
+      "properties": {
+        "activity": {"enum": ["online_authentication_failures", "offline_password_cracking", "unknown"]},
+        "event_count": {"type": "integer", "minimum": 0},
+        "window_start": {"$ref": "#/$defs/stamp"},
+        "window_end": {"$ref": "#/$defs/stamp"}
+      }
+    },
+    "reachability": {
+      "allOf": [{"$ref": "#/$defs/common"}], "unevaluatedProperties": false,
+      "properties": {"reachable": {"$ref": "#/$defs/state"}}
+    },
+    "account": {
+      "allOf": [{"$ref": "#/$defs/common"}], "unevaluatedProperties": false,
+      "properties": {"enabled": {"$ref": "#/$defs/state"}, "locked": {"$ref": "#/$defs/state"}, "blocked": {"$ref": "#/$defs/state"}}
+    },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["technique_id", "seed_event_id", "user_id", "host_id", "source_ip", "endpoint_id"],
+      "properties": {
+        "technique_id": {"type": "string", "pattern": "^T[0-9]{4}(\\.[0-9]{3})?$"},
+        "seed_event_id": {"$ref": "#/$defs/text"},
+        "user_id": {"$ref": "#/$defs/text"}, "host_id": {"$ref": "#/$defs/text"},
+        "source_ip": {"type": "string", "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}]},
+        "endpoint_id": {"$ref": "#/$defs/text"},
+        "analyst_correlation": {"$ref": "#/$defs/correlation"},
+        "authentication_reachability": {"$ref": "#/$defs/reachability"},
+        "account_authentication": {"$ref": "#/$defs/account"}
+      }
+    }
+  }
+}

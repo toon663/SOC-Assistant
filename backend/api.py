@@ -15,6 +15,7 @@ from config import settings
 from database import IncidentRepository
 from explain import annotate, warm_up
 from file_scan import ScanUnavailable
+from gatherer import gather_security_events
 from integrations import IntegrationHub
 from live_detection import LiveDetector
 from llm_analyst import ClaudeAnalyst, ReviewWorker
@@ -250,7 +251,8 @@ def create_app():
         incident = None
         if events:
             incident = pipeline.run(events, approved=False)
-            incident = repository.save_incident(incident)
+            repository.save_incident(incident)
+            incident = incident_to_dict(incident)
         return {
             "snapshot": asdict(batch),
             "anomalies": [event.metadata for event in events],

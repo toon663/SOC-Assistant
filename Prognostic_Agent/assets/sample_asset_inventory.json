@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "entities": [
+    {
+      "entity_id": "user:alice", "entity_type": "user", "canonical_id": "user:alice",
+      "as_of": "2026-11-23T11:00:00Z", "asset_criticality": "normal",
+      "asset_owner": "IT", "privilege_level": "admin", "exposure": "internal",
+      "platform": "windows", "related_assets": []
+    },
+    {
+      "entity_id": "host:workstation-01", "entity_type": "host",
+      "as_of": "2026-11-23T11:00:00Z", "asset_criticality": "high",
+      "asset_owner": "Engineering", "privilege_level": "user", "exposure": "internal",
+      "platform": "windows",
+      "related_assets": [
+        {
+          "entity_id": "host:file-server-01", "entity_type": "host", "relation": "can_access",
+          "reachable": true, "evidence_ref": "inventory:network-access-1"
+        }
+      ]
+    },
+    {
+      "entity_id": "service:build", "entity_type": "service",
+      "as_of": "2026-11-23T11:00:00Z", "asset_criticality": "critical",
+      "asset_owner": "Engineering", "privilege_level": "none", "exposure": "internal",
+      "platform": "windows", "related_assets": []
+    }
+  ]
+}

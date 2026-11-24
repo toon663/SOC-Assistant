@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "environment": "test",
+  "variants": [
+    {"name": "baseline", "description": "Original exact-attribution fixture with fresh admin context.", "changes": {}},
+    {"name": "user_level_privilege", "description": "Lower only the synthetic account's effective privilege from admin to user.", "changes": {"user_privilege_level": "user"}},
+    {"name": "aged_evidence_12h", "description": "Age both observations by another 12 hours; still within the 24-hour evidence window.", "changes": {"age_evidence_hours": 12}},
+    {"name": "no_reachability", "description": "Mark the known workstation-to-file-server relationship unreachable.", "changes": {"reachable": false}},
+    {"name": "lower_behavioral_score", "description": "Lower supplied behavioral score from 70 to 20; keep Analyst confidence fixed.", "changes": {"behavioral_score": 20}},
+    {"name": "stale_asset_record", "description": "Make the account's privilege-bearing asset snapshot 25 hours old; host snapshot stays fresh.", "changes": {"user_asset_age_hours": 25}},
+    {"name": "expired_evidence_25h", "description": "Age observations by another 25 hours so all event evidence is outside the freshness limit.", "changes": {"age_evidence_hours": 25}},
+    {"name": "coarse_attribution", "description": "Supply no technique-to-event mapping; no attribution is inferred.", "changes": {"omit_attribution": true}}
+  ]
+}

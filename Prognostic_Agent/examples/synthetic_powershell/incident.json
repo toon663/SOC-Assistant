@@ -1,0 +1,41 @@
+{
+  "incident_id": "synthetic-powershell-credential-access-001",
+  "anomaly_score": 80,
+  "detected_at": "2026-11-23T12:00:00Z",
+  "events": [
+    {
+      "event_id": "synthetic-valid-account-001",
+      "timestamp": "2026-11-23T11:50:00Z",
+      "source": "synthetic-fixture",
+      "event_type": "successful_logon",
+      "user": "FIXTURE-ADMIN",
+      "host": "FIXTURE-WORKSTATION",
+      "source_ip": null,
+      "message": "Hand-authored synthetic evidence of valid-account misuse in this test scenario; no login was performed.",
+      "metadata": {"windows_event_id": 4624, "log_name": "Security", "synthetic": true}
+    },
+    {
+      "event_id": "synthetic-powershell-001",
+      "timestamp": "2026-11-23T11:55:00Z",
+      "source": "synthetic-fixture",
+      "event_type": "process_creation",
+      "user": "FIXTURE-ADMIN",
+      "host": "FIXTURE-WORKSTATION",
+      "source_ip": null,
+      "message": "Hand-authored synthetic PowerShell execution evidence associated with the same account and host; no script or executable was run. Credential access remains a forecast candidate, not an observed fact.",
+      "metadata": {"windows_event_id": 4688, "log_name": "Security", "synthetic": true}
+    }
+  ],
+  "risk_analysis": {
+    "triaged_at": "2026-11-23T12:00:00Z",
+    "verdict": "suspicious",
+    "confidence": 0.9,
+    "risk_score": 80,
+    "mitre_techniques": ["T1078", "T1059.001"],
+    "findings": [
+      {"points": 70, "text": "Synthetic behavioral assessment supplied by the fixture author."},
+      {"points": 10, "text": "Synthetic asset-criticality bonus in the upstream total; deliberately excluded from the separately supplied behavioral score."}
+    ],
+    "correlations": []
+  }
+}

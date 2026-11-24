@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "source_report": "forecasts/contract-review/backend_test_scope_report.json",
+  "methods": [
+    "test_approvals.ApprovalApiTests.test_approval_resumes_stored_response_and_persists_audit",
+    "test_approvals.ApprovalApiTests.test_denial_records_decision_without_response_actions",
+    "test_approvals.ApprovalApiTests.test_denied_incident_cannot_be_approved_later",
+    "test_approvals.ApprovalApiTests.test_invalid_input_never_executes_a_response",
+    "test_approvals.ApprovalApiTests.test_monitor_playbook_can_be_reviewed_without_containment",
+    "test_approvals.ApprovalApiTests.test_reingestion_preserves_denial_and_decision_audit",
+    "test_approvals.ApprovalApiTests.test_repeated_or_conflicting_decisions_do_not_repeat_actions",
+    "test_approvals.DecisionConcurrencyTests.test_two_database_connections_can_execute_only_one_decision"
+  ]
+}
