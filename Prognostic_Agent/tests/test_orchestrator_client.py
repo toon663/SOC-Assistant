@@ -130,7 +130,7 @@ class OrchestratorClientTests(unittest.TestCase):
 
     def test_missing_inventory_and_invalid_incident(self):
         result=OrchestratorForecastClient(replace(self.config,inventory_path=None)).assess(incident(),forecast_as_of=AS_OF)
-        self.assertEqual(result["reason"],"inventory_stale")
+        self.assertEqual(result["reason"],"asset_inventory_unavailable")
         result=OrchestratorForecastClient(self.config).assess({},forecast_as_of=AS_OF)
         self.assertEqual(result["response_type"],"validation_error")
 

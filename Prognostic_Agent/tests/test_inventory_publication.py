@@ -95,9 +95,21 @@ class InventoryPublicationTests(unittest.TestCase):
                 result=client.assess(before,forecast_as_of=AS_OF)
                 transport.assert_not_called()
                 self.assertEqual(result["response_type"],"operational_error")
-                self.assertEqual(result["reason"],"inventory_stale")
+                expected="asset_inventory_unavailable" if change in {"missing","corrupt"} else "inventory_stale"
+                self.assertEqual(result["reason"],expected)
                 self.assertIsNone(result["risk_score"])
                 self.assertEqual(before,incident())
+
+    def test_unreadable_inventory_is_unavailable_and_transport_is_not_called(self):
+        transport=Mock(side_effect=AssertionError("No forecast call"))
+        client=OrchestratorForecastClient(OrchestratorClientConfig(inventory_path=self.inventory,history_path=self.root/"history.db"),transport=transport)
+        value=incident()
+        with patch("Prognostic_Agent.inventory_publication.Path.read_bytes",side_effect=PermissionError()):
+            result=client.assess(value,forecast_as_of=AS_OF)
+        self.assertEqual(result["reason"],"asset_inventory_unavailable")
+        self.assertEqual(result["response_type"],"operational_error")
+        self.assertIsNone(result["risk_score"])
+        transport.assert_not_called()
 
     def test_exact_24_hours_is_allowed_but_one_microsecond_older_is_not(self):
         document=json.loads(self.original)

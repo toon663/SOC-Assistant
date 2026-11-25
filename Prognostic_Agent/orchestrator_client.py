@@ -16,7 +16,7 @@ from .analyst_adapter import adapt_analyst_incident
 from .config import AGENT_DIR, ForecastConfig
 from .contracts import AnalystAlert, RequestValidationError, canonical_json, parse_time, utc_text
 from .migrations import validate_environment
-from .inventory_publication import collected_inventory
+from .inventory_publication import read_inventory, InventoryUnavailable, InventoryStale
 from .orchestrator_contract import ContractError, empty_record, serialize_forecast, validate_contract
 from .private_paths import PRIVATE_DIR, private_path
 
@@ -159,9 +159,9 @@ class OrchestratorForecastClient:
         try:
             # Wall-clock freshness even for a historical evidence cutoff. Never
             # substitute file mtime, overlay approval time or forecast horizon.
-            collected_inventory(Path(self.config.inventory_path).read_bytes())
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
-            return fail("operational_error", "inventory_stale")
+            read_inventory(self.config.inventory_path)
+        except (InventoryUnavailable, InventoryStale) as error:
+            return fail("operational_error", error.reason)
         request = {"alert":payload.data, "request_id":request_id, "as_of":utc_text(as_of), "environment":self.config.environment,
                    "inventory_path":str(self.config.inventory_path) if self.config.inventory_path is not None else None,
                    "history_path":str(private_path(self.config.history_path)), "rules_path":str(self.config.rules_path),
@@ -213,34 +213,25 @@ def _worker_main():
         record["issues"] = [{"code":reason, "detail":"Standalone forecast unavailable; no action is authorized."}]
         return record
     try:
-        path = Path(request["inventory_path"]) if request["inventory_path"] else None
-        if path is None or not path.is_file():
-            record = failure("inventory_stale")
-        else:
-            raw_inventory = path.read_bytes()
-            digest = hashlib.sha256(raw_inventory).hexdigest()
-            try:
-                inventory = collected_inventory(raw_inventory)
-            except (ValueError, KeyError, TypeError, AttributeError):
-                print(canonical_json(validate_contract(failure("inventory_stale"))))
-                return
-            if inventory.get("schema_version") != 1 or not isinstance(inventory.get("entities"),list):
-                raise ValueError("Invalid inventory")
-            records = {r["entity_id"]:r for r in inventory["entities"]}
-            if len(records) != len(inventory["entities"]):
-                raise ValueError("Duplicate inventory identities")
-            config = ForecastConfig(environment=request["environment"], rules_path=Path(request["rules_path"]), weights_path=Path(request["weights_path"]),
-                                    asset_provider_timeout_seconds=min(2.0, request["timeout_seconds"]),
-                                    enrichment_timeout_seconds=min(5.0, request["timeout_seconds"]), sqlite_busy_timeout_ms=500)
-            with ForecastHistory(private_path(request["history_path"]), environment=config.environment, busy_timeout_ms=500) as history:
-                # explanation_config intentionally omitted: forced deterministic.
-                response = ForecastService(history, config=config).assess(alert, asset_provider=_SnapshotInventoryProvider(records),
-                    forecast_as_of=request["as_of"], evaluation_id="orchestrator:"+content_hash({"inventory":digest,"as_of":request["as_of"]}),
-                    shadow_context={"source":"orchestrator_shadow","source_incident_id":alert["alert_id"],"analyst_verdict":alert["verdict"]})
-            record = serialize_forecast(response, request_id=request["request_id"])
-            # Error envelopes still bind to this assessed request, never zeros.
-            if record["response_type"] != "risk_forecast":
-                record.update(alert_id=alert["alert_id"], analyst_revision=alert["analyst_revision"], input_fingerprint=AnalystAlert.from_dict(alert).input_fingerprint)
+        try:
+            raw_inventory, inventory = read_inventory(request["inventory_path"])
+        except (InventoryUnavailable, InventoryStale) as error:
+            print(canonical_json(validate_contract(failure(error.reason))))
+            return
+        digest = hashlib.sha256(raw_inventory).hexdigest()
+        records = {r["entity_id"]:r for r in inventory["entities"]}
+        config = ForecastConfig(environment=request["environment"], rules_path=Path(request["rules_path"]), weights_path=Path(request["weights_path"]),
+                                asset_provider_timeout_seconds=min(2.0, request["timeout_seconds"]),
+                                enrichment_timeout_seconds=min(5.0, request["timeout_seconds"]), sqlite_busy_timeout_ms=500)
+        with ForecastHistory(private_path(request["history_path"]), environment=config.environment, busy_timeout_ms=500) as history:
+            # explanation_config intentionally omitted: forced deterministic.
+            response = ForecastService(history, config=config).assess(alert, asset_provider=_SnapshotInventoryProvider(records),
+                forecast_as_of=request["as_of"], evaluation_id="orchestrator:"+content_hash({"inventory":digest,"as_of":request["as_of"]}),
+                shadow_context={"source":"orchestrator_shadow","source_incident_id":alert["alert_id"],"analyst_verdict":alert["verdict"]})
+        record = serialize_forecast(response, request_id=request["request_id"])
+        # Error envelopes still bind to this assessed request, never zeros.
+        if record["response_type"] != "risk_forecast":
+            record.update(alert_id=alert["alert_id"], analyst_revision=alert["analyst_revision"], input_fingerprint=AnalystAlert.from_dict(alert).input_fingerprint)
     except Exception:
         record = failure("forecast_worker_error")
     print(canonical_json(validate_contract(record)))

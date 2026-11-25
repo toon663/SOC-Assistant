@@ -11,16 +11,44 @@ from .contracts import parse_time
 from .private_paths import PRIVATE_DIR, private_path
 
 
+class InventoryUnavailable(ValueError):
+    reason = "asset_inventory_unavailable"
+
+
+class InventoryStale(ValueError):
+    reason = "inventory_stale"
+
+
 def collected_inventory(raw, *, now=None):
     """Fail closed; filesystem mtimes and publication times never imply freshness."""
-    document = json.loads(raw.decode("utf-8-sig"))
+    try:
+        document = json.loads(raw.decode("utf-8-sig"))
+    except (ValueError, UnicodeError, TypeError, AttributeError):
+        raise InventoryUnavailable() from None
     if not isinstance(document, dict) or document.get("schema_version") != 1 or not isinstance(document.get("entities"), list):
-        raise ValueError("inventory_stale")
-    collected = parse_time(document["source"]["collected_at"])
+        raise InventoryUnavailable()
+    identities = set()
+    for entity in document["entities"]:
+        if (not isinstance(entity, dict) or not isinstance(entity.get("entity_id"), str) or not entity["entity_id"].strip()
+            or entity.get("entity_type") not in {"host", "user", "service"} or entity["entity_id"] in identities):
+            raise InventoryUnavailable()
+        identities.add(entity["entity_id"])
+    try:
+        collected = parse_time(document["source"]["collected_at"])
+    except (KeyError, TypeError, AttributeError, ValueError):
+        raise InventoryStale() from None
     age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
     if age < 0 or age > 24 * 3600:
-        raise ValueError("inventory_stale")
+        raise InventoryStale()
     return document
+
+
+def read_inventory(path, *, now=None):
+    try:
+        raw = Path(path).read_bytes()
+    except (OSError, TypeError, ValueError):
+        raise InventoryUnavailable() from None
+    return raw, collected_inventory(raw, now=now)
 
 
 def publish_inventory(inventory_path, raw_path, overlay_path, *, destination=None, now=None):

@@ -292,20 +292,51 @@ class PrognosticShadowTests(unittest.TestCase):
         self.assertEqual(observer.status()["counts"].get("forecast_errors"),1)
         row=json.loads(next(observer.directory.glob("*.json")).read_text())
         self.assertEqual(row["forecast_reason"],"asset_inventory_unavailable")
+        for case in ("missing-file","corrupt-file"):
+            with self.subTest(case=case):
+                inventory=self.root/(case+".json")
+                if case=="corrupt-file":inventory.write_text("{")
+                observer=self.bridge.SideChannelObserver(inventory_path=inventory,directory=self.root/case,timeout_seconds=3)
+                self.addCleanup(observer.close)
+                observer.submit(incident_to_dict(incident));self.assertTrue(observer.wait_idle(8))
+                row=json.loads(next(observer.directory.glob("*.json")).read_text())
+                self.assertEqual(row["forecast_response_type"],"operational_error")
+                self.assertEqual(row["forecast_reason"],"asset_inventory_unavailable")
+                self.assertFalse(row["order_changed"])
 
     def test_real_forecast_worker_reads_inventory_and_completes_assessment(self):
         from agents import incident_to_dict
         inventory=self.root/"inventory.json"
-        inventory.write_text(json.dumps({"schema_version":1,"entities":[
+        document={"schema_version":1,"source":{"collected_at":datetime.now(timezone.utc).isoformat()},"entities":[
             {"entity_id":"host:fixture-db","entity_type":"host","asset_criticality":"normal","last_updated":datetime.now(timezone.utc).isoformat()}
-        ]}))
+        ]}
+        inventory.write_text(json.dumps(document))
         observer=self.bridge.SideChannelObserver(inventory_path=inventory,directory=self.root/"real-engine",timeout_seconds=3)
         self.addCleanup(observer.close)
-        observer.submit(incident_to_dict(legacy_run()[0]))
+        incident,_=legacy_run()
+        before=fingerprint(incident)
+        observer.submit(incident_to_dict(incident))
         self.assertTrue(observer.wait_idle(8))
         row=json.loads(next(observer.directory.glob("*.json")).read_text())
         self.assertEqual(row["forecast_response_type"],"risk_forecast")
         self.assertIn(row["forecast_status"],{"complete","partial","abstained"})
+        for case in ("missing-timestamp","stale-timestamp","future-timestamp"):
+            with self.subTest(case=case):
+                changed=deepcopy(document)
+                if case=="missing-timestamp":changed["source"].pop("collected_at")
+                else:
+                    changed["source"]["collected_at"]=(datetime.now(timezone.utc)+timedelta(hours=-25 if case=="stale-timestamp" else 1)).isoformat()
+                inventory=self.root/(case+".json");inventory.write_text(json.dumps(changed))
+                observer=self.bridge.SideChannelObserver(inventory_path=inventory,directory=self.root/case,timeout_seconds=3)
+                self.addCleanup(observer.close)
+                observer.submit(incident_to_dict(incident));self.assertTrue(observer.wait_idle(8))
+                row=json.loads(next(observer.directory.glob("*.json")).read_text())
+                self.assertEqual(row["forecast_response_type"],"operational_error")
+                self.assertEqual(row["forecast_reason"],"inventory_stale")
+                self.assertEqual(row["numeric_assessment_status"],"unavailable")
+                self.assertEqual(row["options_without_forecast"],row["options_with_forecast"])
+                self.assertEqual(row["executed_actions"],[])
+                self.assertEqual(fingerprint(incident),before)
 
     def test_snapshot_failure_never_reaches_legacy_result(self):
         import agents

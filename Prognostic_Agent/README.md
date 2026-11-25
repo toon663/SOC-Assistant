@@ -1935,9 +1935,10 @@ unchanged. No timestamp is refreshed merely by publication.
 
 The observer client reads collection time from `source.collected_at`; file mtime,
 publication time, forecast horizon and historical assessment cutoff do not grant
-freshness. Missing/corrupt/unreadable inventory, missing/invalid/future collection
-time, or age over 24 hours returns an operational no-forecast `inventory_stale`,
-with null score and unchanged legacy decision. Exactly 24 hours is allowed.
+freshness. A missing, corrupt or unreadable inventory returns operational
+`asset_inventory_unavailable`. A missing/invalid/future collection timestamp, or
+age over 24 hours, returns operational `inventory_stale`. Both are no-forecast
+results with null score and unchanged legacy decision. Exactly 24 hours is allowed.
 The worker rechecks the file before use to cover replacement after client checks.
 Record-level `last_updated` checks still apply. Refresh manually if a daily run
 fails or the file ages out; there is no watcher or scheduled refresh.
