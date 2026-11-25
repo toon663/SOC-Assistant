@@ -2,6 +2,7 @@ from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -11,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from Prognostic_Agent.contracts import AnalystAlert
-from Prognostic_Agent.orchestrator_client import OrchestratorClientConfig, OrchestratorForecastClient
+from Prognostic_Agent.orchestrator_client import OrchestratorClientConfig, OrchestratorForecastClient, NUMERICAL_THREAD_LIMITS
 from Prognostic_Agent.orchestrator_contract import empty_record
 from Prognostic_Agent.orchestrator_shadow_log import ShadowDecisionLog
 from Prognostic_Agent.private_paths import PRIVATE_DIR
@@ -68,6 +69,17 @@ class OrchestratorClientTests(unittest.TestCase):
         repeated=client.assess(incident(),forecast_as_of=AS_OF)
         self.assertEqual(result["forecast_id"],repeated["forecast_id"])
         self.assertEqual(result["forecast_revision"],repeated["forecast_revision"])
+
+    def test_worker_starts_with_single_thread_limits_and_parent_is_unchanged(self):
+        before={key:os.environ.get(key) for key in NUMERICAL_THREAD_LIMITS}
+        script="import os,sys,json; sys.stdin.read(); print(json.dumps({key:os.environ.get(key) for key in "+json.dumps(list(NUMERICAL_THREAD_LIMITS))+"}))"
+        client=OrchestratorForecastClient(self.config)
+        inherited={key:"8" for key in NUMERICAL_THREAD_LIMITS}
+        with patch.dict(os.environ,inherited),patch.object(client,"_command",return_value=[sys.executable,"-B","-c",script]):
+            observed=client._run_worker({"purpose":"environment_probe"},deadline=time.monotonic()+5)
+            self.assertEqual(observed,NUMERICAL_THREAD_LIMITS)
+            self.assertEqual({key:os.environ[key] for key in inherited},inherited)
+        self.assertEqual({key:os.environ.get(key) for key in NUMERICAL_THREAD_LIMITS},before)
 
     def test_fake_transport_and_revision_mismatch(self):
         client=OrchestratorForecastClient(self.config,transport=fake_transport)

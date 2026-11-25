@@ -21,6 +21,12 @@ from .orchestrator_contract import ContractError, empty_record, serialize_foreca
 from .private_paths import PRIVATE_DIR, private_path
 
 
+NUMERICAL_THREAD_LIMITS = {key: "1" for key in (
+    "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "OMP_THREAD_LIMIT", "MKL_NUM_THREADS",
+    "BLIS_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS", "NUMEXPR_MAX_THREADS",
+)}
+
+
 @dataclass(frozen=True)
 class OrchestratorClientConfig:
     environment: str = "test"
@@ -96,7 +102,7 @@ class OrchestratorForecastClient:
             # Worker blocks reading stdin until assigned to its isolated job.
             process = subprocess.Popen(self._command(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL, text=True, encoding="utf-8", cwd=AGENT_DIR.parent,
-                env={**os.environ,"PYTHONIOENCODING":"utf-8","PYTHONDONTWRITEBYTECODE":"1"},
+                env={**os.environ,"PYTHONIOENCODING":"utf-8","PYTHONDONTWRITEBYTECODE":"1",**NUMERICAL_THREAD_LIMITS},
                 start_new_session=os.name != "nt", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
             if os.name == "nt":
                 job = _WindowsJob(process)
