@@ -1847,3 +1847,93 @@ playbook test; the other parent `4b6d8b4` has the undecorated method. Current
 `backend/tests/test_approvals.py` has no local diff; its mtime is
 **2026-11-23 22:12:19 PST**. These facts support merge integration as the source,
 not a later uncommitted edit, and do not prove a particular operator or intent.
+
+## Opt-in backend side-channel observer
+
+The `prognostic-observer` integration is off by default. It leaves the legacy
+`incident.forecast`, response plan, approval state and actions unchanged. It
+records a separate would-be option order under `private/orchestrator-observer/`;
+forecast history is under `private/orchestrator/forecast_history.db`. All v1
+advice remains shadow-only, including when its environment is production.
+Use `test` for the operator examples below. There is no watcher or scheduled task.
+
+To enable it for a backend started from the same PowerShell environment, set:
+
+```powershell
+$env:SOC_PROGNOSTIC_MODE = 'shadow'
+$env:SOC_PROGNOSTIC_ENVIRONMENT = 'test'
+$env:SOC_PROGNOSTIC_INVENTORY_PATH = "$PWD\Prognostic_Agent\private\inventory-latest.json"
+```
+
+Point the inventory setting at an actual imported inventory with the approved
+normal overlay before starting. The `inventory-latest.json` publication described
+below is proposed, not implemented. Restart the backend to apply settings.
+To disable, set `$env:SOC_PROGNOSTIC_MODE = 'off'` and restart. Optional timeout
+and queue settings default to three seconds and 64 pending jobs. Mode off does
+not construct the observer and returns before snapshotting/copying.
+
+Notification coverage: `OrchestratorAgent.evaluate_and_respond()` notifies after
+recording an approval-required decision, or after `_execute_plan()` returns.
+The normal pipeline and `SecurityOperationsPipeline.reassess()` reach that
+method, including re-triage after an asynchronous Analyst review. Analyst-benign
+incidents record a skip without a forecast. **Gap:** `review_response()` does
+not notify: human approval/denial of a stored plan has no separate shadow entry.
+Neither direct `_execute_plan()` calls nor repeat updates that bypass reassessment
+notify. No additional notification hook has been added for these paths.
+
+The worker calls `confine_private_runtime()` in normal runtime, before importing
+the engine or a client. Its Python audit hook rejects ordinary file/SQLite writes,
+directory creation, removal and rename outside `Prognostic_Agent/private/`, and
+blocks socket connections. Read access is allowed; SQLite `:memory:` and the
+worker's stdout pipe are allowed. This is a trusted-code guard, not an operating
+system sandbox: it does not establish isolation against arbitrary native code,
+uncovered syscalls or filesystem races. Worker code must remain trusted. The
+real-worker regression test in `backend/tests/test_prognostic_shadow.py` verifies
+private file/SQLite success and outside-private file/directory/SQLite rejection.
+
+`GET /orchestrator/status` is read-only. Its observer block is mode-gated and
+contains counters, queue depth/capacity, fixed diagnostic codes and metadata;
+it contains no incidents, events, targets or forecast content. The whole endpoint
+also retains its existing model metadata and thresholds, so the whole response
+is not literally counters-only. Counters reset when the backend restarts.
+
+Print a UTC date-range summary (start inclusive, end exclusive):
+
+```powershell
+python -B -m Prognostic_Agent.orchestrator_shadow_log --directory Prognostic_Agent/private/orchestrator-observer --environment test --start 2026-11-23T00:00:00Z --end 2026-11-30T00:00:00Z
+```
+
+It includes forecast status/reason counts, skips, order changes and errors.
+Counts are per decision, with separate distinct-incident counts. Malformed files
+whose date cannot be read are reported directory-wide. Queue overflow and
+shutdown-drop counters exist only in process memory and cannot be reconstructed
+for historical ranges. Without a status snapshot, queue counts are explicitly
+unavailable, never invented as zero. Optionally capture a read-only snapshot:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/orchestrator/status | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 Prognostic_Agent/private/observer-status.json
+python -B -m Prognostic_Agent.orchestrator_shadow_log --directory Prognostic_Agent/private/orchestrator-observer --environment test --start 2026-11-23T00:00:00Z --end 2026-11-30T00:00:00Z --queue-status-file Prognostic_Agent/private/observer-status.json
+```
+
+The command whitelists queue metrics from that snapshot and labels their scope
+`process_lifetime_not_date_filtered`, separate from the dated decision counts.
+Disabled, mismatched-environment or missing snapshots report unavailable counts.
+No network request, backend import or write is made by the summary command.
+
+Inventory freshness proposal only: (A) keep versioned export/import/overlay
+outputs and manually repoint the observer setting after a successful refresh;
+or (B) have the existing daily script publish the validated effective inventory
+to `private/inventory-latest.json`. For B, write a temporary sibling then replace
+the latest file atomically, retaining the versioned source, hash and collection
+timestamp. Failed imports must leave the previous latest file and timestamp
+unchanged. Publish provenance with the inventory, not just a filesystem mtime.
+The observer already reads inventory per forecast, so successful publication
+would not require a worker restart. No publisher or freshness gate is implemented
+here. Proposed policy: if the authenticated collection timestamp is missing,
+future-dated or older than 24 hours, return an operational no-forecast result
+(`asset_inventory_stale` for age), log the issue, and retain the legacy decision.
+Do not refresh timestamps without recollection. Per-record `last_updated` checks
+remain necessary even for a newly published file. Currently the engine applies
+existing record-level freshness rules, which may yield partial/abstained results;
+there is no whole-file age refusal. A daily run needs monitoring or an on-demand
+manual refresh around its 24-hour boundary; no watcher is proposed for this phase.

@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import uuid
 
-from .contracts import content_hash, utc_text
+from .contracts import content_hash, utc_text, parse_time
 from .migrations import validate_environment
 from .orchestrator_advisory import MAPPING_HASH, MAPPING_VERSION, prioritize_response_options
 from .orchestrator_contract import ContractError, empty_record, validate_contract
@@ -74,8 +74,12 @@ class ShadowDecisionLog:
         return summarize_shadow_log(self.directory, environment=self.environment)
 
 
-def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test"):
+def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test", start=None, end=None, queue_status=None):
     validate_environment(environment)
+    start = parse_time(start) if start is not None else None
+    end = parse_time(end) if end is not None else None
+    if start is not None and end is not None and start >= end:
+        raise ValueError("Start must precede end")
     statuses, reasons, advisory_reasons = Counter(), Counter(), Counter()
     skipped, errored, incidents, forecasts = set(), set(), set(), set()
     decision_count = changed = skip_count = error_count = invalid = unbound = 0
@@ -89,6 +93,10 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test")
                 raise ValueError()
             if row["environment"] != environment:
                 continue
+            if start is not None or end is not None:
+                created = parse_time(row["created_at"])
+                if (start is not None and created < start) or (end is not None and created >= end):
+                    continue
             kind = row["forecast_response_type"]
             if (kind not in {"risk_forecast","skipped_benign","validation_error","operational_error"} or
                 type(row["order_changed"]) is not bool or (row["incident_ref"] is not None and not isinstance(row["incident_ref"],str)) or
@@ -116,9 +124,23 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test")
                 error_count += 1
             else:
                 raise ValueError()
-        except (ValueError, KeyError, TypeError, OSError):
+        except (ValueError, KeyError, TypeError, OSError, AttributeError):
             invalid += 1
+    queue = {"available":False, "scope":"process_lifetime_not_date_filtered", "reason":"No queue status snapshot supplied; historical queue counts are not persisted."}
+    if queue_status is not None:
+        status = queue_status.get("prognostic_observer") if isinstance(queue_status, dict) else None
+        if isinstance(status, dict) and status.get("mode") == "shadow" and status.get("environment") == environment and isinstance(status.get("counts"), dict):
+            allowed = {"accepted", "completed", "skipped_benign", "forecast_errors", "observer_queue_full", "observer_shutdown_dropped", "observer_closed", "observer_timeout", "observer_submission_failed", "observer_snapshot_too_large", "observer_failed", "observer_client_failed", "observer_package_missing", "observer_logging_failed", "observer_mapping_mismatch", "observer_contract_invalid", "observer_failure_log_failed", "observer_worker_loop_failed", "observer_shutdown_failed"}
+            counts = status.get("counts") if isinstance(status.get("counts"), dict) else {}
+            queue = {"available":True, "scope":"process_lifetime_not_date_filtered",
+                     "counts":{k:v for k,v in counts.items() if k in allowed and type(v) is int and v >= 0},
+                     "queued":status.get("queued") if type(status.get("queued")) is int else None,
+                     "capacity":status.get("capacity") if type(status.get("capacity")) is int else None}
+        else:
+            queue["reason"] = "Observer disabled, unavailable or environment mismatch in supplied snapshot."
     return {"response_type":"orchestrator_shadow_summary", "environment":environment,
+            "date_range":{"start_inclusive":utc_text(start) if start else None,"end_exclusive":utc_text(end) if end else None,"timezone":"UTC"},
+            "queue_counters":queue,
             "counting_basis":"Status/reason/order counts are per decision; incident counts are distinct incident_ref values. Categories can overlap across revisions.",
             "decision_count":decision_count, "incident_count":len(incidents), "distinct_forecast_count":len(forecasts),
             "unbound_decision_count":unbound,
@@ -130,9 +152,22 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test")
             "executed_action_count":0}
 
 
-if __name__ == "__main__":
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--directory", type=Path, default=DEFAULT_LOG_DIRECTORY)
+    parser.add_argument("--directory", type=Path, default=PRIVATE_DIR / "orchestrator-observer")
     parser.add_argument("--environment", choices=("test","demo","production"), default="test")
-    args = parser.parse_args()
-    print(json.dumps(summarize_shadow_log(args.directory, environment=args.environment), indent=2))
+    parser.add_argument("--start", help="Inclusive UTC timestamp, e.g. 2026-11-23T00:00:00Z")
+    parser.add_argument("--end", help="Exclusive UTC timestamp")
+    parser.add_argument("--queue-status-file", type=Path, help="Private JSON snapshot of GET /orchestrator/status; process-lifetime counters, not date-filtered")
+    args = parser.parse_args(argv)
+    try:
+        status = json.loads(private_path(args.queue_status_file).read_text(encoding="utf-8-sig")) if args.queue_status_file else None
+        result = summarize_shadow_log(args.directory, environment=args.environment, start=args.start, end=args.end, queue_status=status)
+    except (OSError, ValueError, TypeError):
+        parser.error("Invalid date range, private status snapshot or summary input")
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

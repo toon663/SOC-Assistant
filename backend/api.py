@@ -70,6 +70,40 @@ def create_app():
     systems = IntegrationHub()
     repository = IncidentRepository(settings.database_path)
     pipeline = SecurityOperationsPipeline(systems=systems, require_approval=settings.require_human_approval)
+    observer = None
+    observer_initialization_error = False
+    if settings.prognostic_mode != "off":
+        try:
+            if settings.prognostic_mode != "shadow":
+                raise ValueError("Unsupported observer mode")
+            from prognostic_bridge import create_observer
+            observer = create_observer(settings)
+            pipeline.orchestrator.prognostic_observer = observer
+            app.state.prognostic_observer = observer
+            def close_observer():
+                try:
+                    observer.close()
+                except Exception:
+                    try:
+                        observer.record_failure("observer_shutdown_failed")
+                    except Exception:
+                        pass  # Observer cleanup must not break legacy shutdown.
+            app.add_event_handler("shutdown", close_observer)
+        except Exception:
+            # Retained in process memory and exposed by /orchestrator/status.
+            # Do not put observer failures into Incident or backend storage.
+            observer_initialization_error = True
+
+    def observer_status(payload):
+        if observer is not None:
+            try:
+                payload["prognostic_observer"] = observer.status()
+            except Exception:
+                payload["prognostic_observer"] = {"mode":"unavailable", "environment":"test", "reason":"observer_status_failed"}
+        elif observer_initialization_error:
+            payload["prognostic_observer"] = {"mode":"unavailable", "environment":"test", "reason":"observer_initialization_failed"}
+        return payload
+
     windows_ingest = WindowsIngestService(pipeline, repository)
     live = LiveDetector(windows_ingest)
     reviews = None
@@ -348,8 +382,8 @@ def create_app():
         """Whether the trained response model is loaded, and how many analyst decisions it has learned from."""
         model = pipeline.orchestrator.model
         if model is None:
-            return {"model_loaded": False, "decided_by": "rules_fallback"}
-        return {"model_loaded": True, "decided_by": "model", **model.info, "thresholds": model.thresholds}
+            return observer_status({"model_loaded": False, "decided_by": "rules_fallback"})
+        return observer_status({"model_loaded": True, "decided_by": "model", **model.info, "thresholds": model.thresholds})
 
 
 

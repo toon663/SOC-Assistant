@@ -32,6 +32,14 @@ class Settings:
     llm_effort: str = "medium"
     llm_max_reviews_per_hour: int = 30
 
+    # Parse optional observer bounds only inside the guarded API initializer.
+    # Bad observer settings must not prevent legacy ingestion from starting.
+    prognostic_mode: str = "off"
+    prognostic_environment: str = "test"
+    prognostic_inventory_path: str = ""
+    prognostic_timeout_seconds: float | str = 3.0
+    prognostic_queue_size: int | str = 64
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
@@ -48,6 +56,11 @@ class Settings:
             llm_model=os.getenv("SOC_LLM_MODEL", cls.llm_model),
             llm_effort=os.getenv("SOC_LLM_EFFORT", cls.llm_effort),
             llm_max_reviews_per_hour=int(os.getenv("SOC_LLM_MAX_REVIEWS_PER_HOUR", "30")),
+            prognostic_mode=os.getenv("SOC_PROGNOSTIC_MODE", "off").strip().lower(),
+            prognostic_environment=os.getenv("SOC_PROGNOSTIC_ENVIRONMENT", "test").strip().lower(),
+            prognostic_inventory_path=os.getenv("SOC_PROGNOSTIC_INVENTORY_PATH", ""),
+            prognostic_timeout_seconds=os.getenv("SOC_PROGNOSTIC_TIMEOUT_SECONDS", "3"),
+            prognostic_queue_size=os.getenv("SOC_PROGNOSTIC_QUEUE_SIZE", "64"),
         )
 
 

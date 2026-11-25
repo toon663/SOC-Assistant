@@ -17,6 +17,7 @@ real SIEM, EDR, identity, threat-intelligence, and ticketing integrations.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, fields
+from copy import deepcopy
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Protocol
@@ -414,12 +415,31 @@ class OrchestratorAgent:
         policy: Optional[PolicyEngine] = None,
         response_model: Any = _AUTO,
         learn_from_decisions: bool = True,
+        prognostic_observer: Any = None,
     ):
         self.systems = systems
         self.require_approval = require_approval
         self.policy = policy or PolicyEngine()
         self.model: Optional[ResponseModel] = ResponseModel.load() if response_model is _AUTO else response_model
         self.learn_from_decisions = learn_from_decisions
+        self.prognostic_observer = prognostic_observer
+
+    def _notify_prognostic_observer(self, incident: Incident) -> None:
+        try:
+            observer = self.prognostic_observer
+            if observer is None:
+                return
+            if incident.risk_analysis.get("verdict") == "benign":
+                observer.skip_benign(incident.incident_id)
+                return
+            # No Incident, systems, repository or plan reference crosses the
+            # boundary. The observer only receives this detached JSON snapshot.
+            observer.submit(deepcopy(incident_to_dict(incident)))
+        except Exception:
+            try:
+                self.prognostic_observer.record_failure("observer_submission_failed")
+            except Exception:
+                pass  # Observer diagnostics cannot replace a legacy result.
 
     def create_risk_report(self, incident: Incident) -> Incident:
         ticket_id = incident.alert.get("ticket_id") or self.systems.create_ticket(incident)
@@ -464,9 +484,12 @@ class OrchestratorAgent:
                 "playbook": incident.selected_playbook,
             }
             incident.record(self.name, "pause_for_approval")
+            self._notify_prognostic_observer(incident)
             return incident
 
-        return self._execute_plan(incident)
+        result = self._execute_plan(incident)
+        self._notify_prognostic_observer(result)
+        return result
 
     def review_response(
         self, incident: Incident, decision: str, reviewer: str, reason: str
