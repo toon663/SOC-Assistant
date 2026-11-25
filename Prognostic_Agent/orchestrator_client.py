@@ -16,6 +16,7 @@ from .analyst_adapter import adapt_analyst_incident
 from .config import AGENT_DIR, ForecastConfig
 from .contracts import AnalystAlert, RequestValidationError, canonical_json, parse_time, utc_text
 from .migrations import validate_environment
+from .inventory_publication import collected_inventory
 from .orchestrator_contract import ContractError, empty_record, serialize_forecast, validate_contract
 from .private_paths import PRIVATE_DIR, private_path
 
@@ -155,6 +156,12 @@ class OrchestratorForecastClient:
             return fail("validation_error", "invalid_analyst_input")
         if self.config.environment == "production" and forecast_as_of is not None and abs((datetime.now(timezone.utc)-as_of).total_seconds()) > 300:
             return fail("validation_error", "production_historical_cutoff_refused")
+        try:
+            # Wall-clock freshness even for a historical evidence cutoff. Never
+            # substitute file mtime, overlay approval time or forecast horizon.
+            collected_inventory(Path(self.config.inventory_path).read_bytes())
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return fail("operational_error", "inventory_stale")
         request = {"alert":payload.data, "request_id":request_id, "as_of":utc_text(as_of), "environment":self.config.environment,
                    "inventory_path":str(self.config.inventory_path) if self.config.inventory_path is not None else None,
                    "history_path":str(private_path(self.config.history_path)), "rules_path":str(self.config.rules_path),
@@ -208,11 +215,15 @@ def _worker_main():
     try:
         path = Path(request["inventory_path"]) if request["inventory_path"] else None
         if path is None or not path.is_file():
-            record = failure("asset_inventory_unavailable")
+            record = failure("inventory_stale")
         else:
             raw_inventory = path.read_bytes()
             digest = hashlib.sha256(raw_inventory).hexdigest()
-            inventory = json.loads(raw_inventory.decode("utf-8-sig"))
+            try:
+                inventory = collected_inventory(raw_inventory)
+            except (ValueError, KeyError, TypeError, AttributeError):
+                print(canonical_json(validate_contract(failure("inventory_stale"))))
+                return
             if inventory.get("schema_version") != 1 or not isinstance(inventory.get("entities"),list):
                 raise ValueError("Invalid inventory")
             records = {r["entity_id"]:r for r in inventory["entities"]}

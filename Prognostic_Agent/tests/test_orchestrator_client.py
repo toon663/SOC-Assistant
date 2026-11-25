@@ -40,7 +40,10 @@ class OrchestratorClientTests(unittest.TestCase):
     def setUp(self):
         self.work=TemporaryDirectory(dir=PRIVATE_DIR,prefix="test-orchestrator-client-");self.addCleanup(self.work.cleanup)
         self.root=Path(self.work.name)
-        self.config=OrchestratorClientConfig(inventory_path=FIXTURE_DIR/"inventory.json",history_path=self.root/"history.db",timeout_seconds=8)
+        inventory=json.loads((FIXTURE_DIR/"inventory.json").read_text())
+        inventory["source"]={"collected_at":datetime.now(timezone.utc).isoformat()}
+        path=self.root/"inventory.json";path.write_text(json.dumps(inventory))
+        self.config=OrchestratorClientConfig(inventory_path=path,history_path=self.root/"history.db",timeout_seconds=8)
 
     def test_benign_skips_before_adapter_inventory_history_and_worker_and_is_counted(self):
         value={"incident_id":"benign-fixture","risk_analysis":{"verdict":"benign"}}
@@ -51,7 +54,7 @@ class OrchestratorClientTests(unittest.TestCase):
             result=client.assess_and_log(value,options(),shadow_log=ShadowDecisionLog(self.root/"decisions"))
         self.assertEqual(result["assessment"]["response_type"],"skipped_benign")
         self.assertIsNone(result["assessment"]["risk_score"])
-        self.assertEqual(ShadowDecisionLog(self.root/"decisions").summary()["skipped_incident_count"],1)
+        self.assertEqual(ShadowDecisionLog(self.root/"decisions").summary()["notification_skipped_count"],1)
         self.assertFalse(self.config.history_path.exists())
 
     def test_actual_local_worker_forecast_is_persisted_and_deterministic(self):
@@ -127,7 +130,7 @@ class OrchestratorClientTests(unittest.TestCase):
 
     def test_missing_inventory_and_invalid_incident(self):
         result=OrchestratorForecastClient(replace(self.config,inventory_path=None)).assess(incident(),forecast_as_of=AS_OF)
-        self.assertEqual(result["reason"],"asset_inventory_unavailable")
+        self.assertEqual(result["reason"],"inventory_stale")
         result=OrchestratorForecastClient(self.config).assess({},forecast_as_of=AS_OF)
         self.assertEqual(result["response_type"],"validation_error")
 

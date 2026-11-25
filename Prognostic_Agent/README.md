@@ -1865,9 +1865,8 @@ $env:SOC_PROGNOSTIC_ENVIRONMENT = 'test'
 $env:SOC_PROGNOSTIC_INVENTORY_PATH = "$PWD\Prognostic_Agent\private\inventory-latest.json"
 ```
 
-Point the inventory setting at an actual imported inventory with the approved
-normal overlay before starting. The `inventory-latest.json` publication described
-below is proposed, not implemented. Restart the backend to apply settings.
+Point the inventory setting at the latest inventory published by a successful
+daily export/import/normal-overlay run before starting. Restart the backend to apply settings.
 To disable, set `$env:SOC_PROGNOSTIC_MODE = 'off'` and restart. Optional timeout
 and queue settings default to three seconds and 64 pending jobs. Mode off does
 not construct the observer and returns before snapshotting/copying.
@@ -1904,7 +1903,13 @@ python -B -m Prognostic_Agent.orchestrator_shadow_log --directory Prognostic_Age
 ```
 
 It includes forecast status/reason counts, skips, order changes and errors.
-Counts are per decision, with separate distinct-incident counts. Malformed files
+Main counts are distinct incident/Analyst-revision pairs, using the latest
+notification in the range (timestamp, then decision ID for ties). Separate
+`notification_*` fields count every notification. `incident_count` counts distinct
+incident references across notifications. Missing revision references, including
+the backend's benign skip and some failure records, are excluded from revision
+totals and shown as `revision_unavailable_notification_count` with reasons; no
+revision is invented. Malformed files
 whose date cannot be read are reported directory-wide. Queue overflow and
 shutdown-drop counters exist only in process memory and cannot be reconstructed
 for historical ranges. Without a status snapshot, queue counts are explicitly
@@ -1920,20 +1925,86 @@ The command whitelists queue metrics from that snapshot and labels their scope
 Disabled, mismatched-environment or missing snapshots report unavailable counts.
 No network request, backend import or write is made by the summary command.
 
-Inventory freshness proposal only: (A) keep versioned export/import/overlay
-outputs and manually repoint the observer setting after a successful refresh;
-or (B) have the existing daily script publish the validated effective inventory
-to `private/inventory-latest.json`. For B, write a temporary sibling then replace
-the latest file atomically, retaining the versioned source, hash and collection
-timestamp. Failed imports must leave the previous latest file and timestamp
-unchanged. Publish provenance with the inventory, not just a filesystem mtime.
-The observer already reads inventory per forecast, so successful publication
-would not require a worker restart. No publisher or freshness gate is implemented
-here. Proposed policy: if the authenticated collection timestamp is missing,
-future-dated or older than 24 hours, return an operational no-forecast result
-(`asset_inventory_stale` for age), log the issue, and retain the legacy decision.
-Do not refresh timestamps without recollection. Per-record `last_updated` checks
-remain necessary even for a newly published file. Currently the engine applies
-existing record-level freshness rules, which may yield partial/abstained results;
-there is no whole-file age refusal. A daily run needs monitoring or an on-demand
-manual refresh around its 24-hour boundary; no watcher is proposed for this phase.
+The daily script now publishes the exact validated effective-inventory bytes to
+`private/inventory-latest.json`, using a flushed temporary sibling and one atomic
+replacement after successful export, import and overlay validation. It retains
+the versioned files, original `source.collected_at`, source SHA-256, overlay SHA-256
+and effective fact hash. The publication result includes the exact file SHA-256.
+Validation or replacement failure leaves the previous latest file and its mtime
+unchanged. No timestamp is refreshed merely by publication.
+
+The observer client reads collection time from `source.collected_at`; file mtime,
+publication time, forecast horizon and historical assessment cutoff do not grant
+freshness. Missing/corrupt/unreadable inventory, missing/invalid/future collection
+time, or age over 24 hours returns an operational no-forecast `inventory_stale`,
+with null score and unchanged legacy decision. Exactly 24 hours is allowed.
+The worker rechecks the file before use to cover replacement after client checks.
+Record-level `last_updated` checks still apply. Refresh manually if a daily run
+fails or the file ages out; there is no watcher or scheduled refresh.
+
+## One-page observer trial runbook (environment=test)
+
+Use the repository root in an **Administrator PowerShell**. These commands do not
+change audit policy or run a controlled test. First refresh inventory using the
+existing approved normal overlay (the runner also performs its normal batch and
+weekly steps):
+
+```powershell
+Set-Location (git rev-parse --show-toplevel)
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Open PowerShell as Administrator' }
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Prognostic_Agent\daily_shadow.ps1 -FreshOnly
+if ($LASTEXITCODE -ne 0) { throw 'Refresh failed; inspect private daily logs before continuing' }
+$env:SOC_PROGNOSTIC_MODE = 'shadow'
+$env:SOC_PROGNOSTIC_ENVIRONMENT = 'test'
+$env:SOC_PROGNOSTIC_INVENTORY_PATH = "$PWD\Prognostic_Agent\private\inventory-latest.json"
+```
+
+Stop the existing backend with Ctrl+C in its console. In the elevated shell with
+the three variables above, restart it (the command keeps that console occupied):
+
+```powershell
+.\run_backend_admin.bat
+```
+
+In a second elevated PowerShell at the repository root, verify that the listening
+backend started after the relevant sources. A stale start requires another restart:
+
+```powershell
+Set-Location (git rev-parse --show-toplevel)
+$listener = Get-NetTCPConnection -LocalPort 8000 -State Listen | Select-Object -First 1
+if (-not $listener) { throw 'Backend is not listening' }
+$backendStarted = (Get-Process -Id $listener.OwningProcess).StartTime.ToUniversalTime()
+$sourcePaths = @('backend/api.py','backend/agents.py','backend/analyst.py','backend/config.py','backend/prognostic_bridge.py','Prognostic_Agent/orchestrator_client.py','Prognostic_Agent/inventory_publication.py')
+$newestSource = ($sourcePaths | ForEach-Object { (Get-Item -LiteralPath $_).LastWriteTimeUtc } | Sort-Object -Descending | Select-Object -First 1)
+if ($backendStarted -le $newestSource) { throw 'Backend predates source changes; restart it' }
+[pscustomobject]@{backend_started_after_sources=$true;started_at_utc=$backendStarted} | ConvertTo-Json
+Start-Process 'http://localhost:8000/app/'
+```
+
+Click **Collect Events** in the dashboard. The observer runs asynchronously for
+new/reassessed decisions; repeat-only merges and human approval/denial do not
+notify it. Snapshot counters before restarting, then summarize today's UTC window:
+
+```powershell
+$snapshot = python -B -m Prognostic_Agent.snapshot_orchestrator_status | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Status snapshot failed' }
+$start = [DateTime]::UtcNow.Date.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+$end = [DateTime]::UtcNow.Date.AddDays(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+python -B -m Prognostic_Agent.orchestrator_shadow_log --environment test --start $start --end $end --queue-status-file (Join-Path 'Prognostic_Agent' $snapshot.snapshot_file)
+```
+
+The snapshot script performs only a loopback GET of `/orchestrator/status`, refuses
+redirects and credential-bearing URLs, and writes a timestamped JSON file under
+`private/status-snapshots/`. Queue counters describe that process-lifetime snapshot,
+not a historical date range. Use `notification_count` beside distinct revision
+totals, and inspect unknown-revision notifications separately.
+
+To turn the trial off, Ctrl+C in the backend console, then in that same console:
+
+```powershell
+$env:SOC_PROGNOSTIC_MODE = 'off'
+.\run_backend_admin.bat
+```
+
+The observer block must then be absent from `Invoke-RestMethod http://localhost:8000/orchestrator/status`.
+Do not register a task or enable the standalone LLM explanation for this trial.

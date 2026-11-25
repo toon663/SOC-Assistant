@@ -84,6 +84,7 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test",
     skipped, errored, incidents, forecasts = set(), set(), set(), set()
     decision_count = changed = skip_count = error_count = invalid = unbound = 0
     mappings = Counter()
+    notifications, revisions = [], {}
     for path in sorted(private_path(directory).glob("*.json")):
         try:
             row = json.loads(path.read_text(encoding="utf-8"))
@@ -93,10 +94,9 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test",
                 raise ValueError()
             if row["environment"] != environment:
                 continue
-            if start is not None or end is not None:
-                created = parse_time(row["created_at"])
-                if (start is not None and created < start) or (end is not None and created >= end):
-                    continue
+            created = parse_time(row["created_at"])
+            if (start is not None and created < start) or (end is not None and created >= end):
+                continue
             kind = row["forecast_response_type"]
             if (kind not in {"risk_forecast","skipped_benign","validation_error","operational_error"} or
                 type(row["order_changed"]) is not bool or (row["incident_ref"] is not None and not isinstance(row["incident_ref"],str)) or
@@ -104,28 +104,36 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test",
                 (kind=="risk_forecast" and (row["forecast_status"] not in {"complete","partial","abstained"} or not isinstance(row["forecast_id"],str))) or
                 (kind!="risk_forecast" and row["forecast_status"] is not None)):
                 raise ValueError()
-            decision_count += 1
+            notifications.append(row)
             if row["incident_ref"] is None:
                 unbound += 1
             else:
                 incidents.add(row["incident_ref"])
-            changed += row["order_changed"] is True
-            reasons[row["forecast_reason"]] += 1
-            advisory_reasons[row["advisory_reason"]] += 1
-            mappings[(row["mapping_version"], row["mapping_hash"])] += 1
-            if kind == "risk_forecast":
-                statuses[row["forecast_status"]] += 1
-                forecasts.add(row["forecast_id"])
-            elif kind == "skipped_benign":
-                if row["incident_ref"] is not None: skipped.add(row["incident_ref"])
-                skip_count += 1
-            elif kind in {"validation_error", "operational_error"}:
-                if row["incident_ref"] is not None: errored.add(row["incident_ref"])
-                error_count += 1
-            else:
-                raise ValueError()
+            revision = row.get("analyst_revision_ref")
+            if row["incident_ref"] and isinstance(revision, str) and revision:
+                key = (row["incident_ref"], revision)
+                ordering = (created, str(row.get("decision_id", path.name)))
+                if key not in revisions or ordering > revisions[key][0]:
+                    revisions[key] = (ordering, row)
         except (ValueError, KeyError, TypeError, OSError, AttributeError):
             invalid += 1
+    for _, row in revisions.values():
+        decision_count += 1
+        kind = row["forecast_response_type"]
+        changed += row["order_changed"] is True
+        reasons[row["forecast_reason"]] += 1
+        advisory_reasons[row["advisory_reason"]] += 1
+        mappings[(row["mapping_version"], row["mapping_hash"])] += 1
+        if kind == "risk_forecast":
+            statuses[row["forecast_status"]] += 1
+            forecasts.add(row["forecast_id"])
+        elif kind == "skipped_benign":
+            skipped.add(row["incident_ref"])
+            skip_count += 1
+        else:
+            errored.add(row["incident_ref"])
+            error_count += 1
+    unknown = [r for r in notifications if not r.get("incident_ref") or not isinstance(r.get("analyst_revision_ref"),str) or not r["analyst_revision_ref"]]
     queue = {"available":False, "scope":"process_lifetime_not_date_filtered", "reason":"No queue status snapshot supplied; historical queue counts are not persisted."}
     if queue_status is not None:
         status = queue_status.get("prognostic_observer") if isinstance(queue_status, dict) else None
@@ -141,7 +149,15 @@ def summarize_shadow_log(directory=DEFAULT_LOG_DIRECTORY, *, environment="test",
     return {"response_type":"orchestrator_shadow_summary", "environment":environment,
             "date_range":{"start_inclusive":utc_text(start) if start else None,"end_exclusive":utc_text(end) if end else None,"timezone":"UTC"},
             "queue_counters":queue,
-            "counting_basis":"Status/reason/order counts are per decision; incident counts are distinct incident_ref values. Categories can overlap across revisions.",
+            "counting_basis":"Main totals count distinct (incident_ref, analyst_revision_ref), using the latest notification within the range (timestamp, then decision_id). Missing revisions are excluded from these totals and reported separately; no revision is invented.",
+            "notification_count":len(notifications), "distinct_incident_revision_count":len(revisions),
+            "notification_status_counts":dict(Counter(r["forecast_status"] for r in notifications if r["forecast_response_type"]=="risk_forecast")),
+            "notification_reason_counts":dict(Counter(r["forecast_reason"] for r in notifications)),
+            "notification_order_changed_count":sum(r["order_changed"] for r in notifications),
+            "notification_skipped_count":sum(r["forecast_response_type"]=="skipped_benign" for r in notifications),
+            "notification_errored_count":sum(r["forecast_response_type"] in {"validation_error","operational_error"} for r in notifications),
+            "revision_unavailable_notification_count":len(unknown),
+            "revision_unavailable_reason_counts":dict(Counter(r["forecast_reason"] for r in unknown)),
             "decision_count":decision_count, "incident_count":len(incidents), "distinct_forecast_count":len(forecasts),
             "unbound_decision_count":unbound,
             "forecast_status_counts":dict(statuses), "reason_counts":dict(reasons), "advisory_reason_counts":dict(advisory_reasons),

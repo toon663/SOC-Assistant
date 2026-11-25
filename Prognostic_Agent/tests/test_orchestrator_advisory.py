@@ -98,8 +98,9 @@ class OrchestratorShadowLogTests(unittest.TestCase):
         self.log=ShadowDecisionLog(Path(self.work.name)/"decisions")
 
     def test_summary_counts_statuses_reasons_changes_skips_and_errors(self):
-        for forecast in (record(),record("partial"),record("abstained"),empty_record("skipped_benign","skipped_benign",alert_id="skip"),
-                         empty_record("operational_error","forecast_timeout",alert_id="error")):
+        for index,forecast in enumerate((record(),record("partial"),record("abstained"),empty_record("skipped_benign","skipped_benign",alert_id="skip"),
+                         empty_record("operational_error","forecast_timeout",alert_id="error"))):
+            forecast["analyst_revision"]="fixture-revision-"+str(index)
             item=self.log.record(forecast,options(),now=parse_time(AS_OF))
             self.assertEqual(item["mapping_version"],MAPPING_VERSION);self.assertEqual(item["mapping_hash"],MAPPING_HASH)
             self.assertEqual(item["executed_actions"],[])
@@ -112,8 +113,10 @@ class OrchestratorShadowLogTests(unittest.TestCase):
     def test_replay_distinct_incident_counts_and_private_hashed_targets(self):
         value=empty_record("skipped_benign","skipped_benign",alert_id="same")
         for _ in range(2):self.log.record(value,options())
-        self.assertEqual(self.log.summary()["skipped_decision_count"],2)
-        self.assertEqual(self.log.summary()["skipped_incident_count"],1)
+        self.assertEqual(self.log.summary()["notification_skipped_count"],2)
+        self.assertEqual(self.log.summary()["revision_unavailable_notification_count"],2)
+        self.assertEqual(self.log.summary()["incident_count"],1)
+        self.assertEqual(self.log.summary()["distinct_incident_revision_count"],0)
         text="".join(p.read_text() for p in self.log.directory.glob("*.json"))
         self.assertNotIn("fixture-admin",text);self.assertNotIn("fixture-workstation",text)
 
@@ -122,7 +125,7 @@ class OrchestratorShadowLogTests(unittest.TestCase):
         (self.log.directory/"corrupt.json").write_text("{")
         summary=self.log.summary()
         self.assertEqual(summary["errored_incident_count"],0)
-        self.assertEqual(summary["errored_decision_count"],1)
+        self.assertEqual(summary["notification_errored_count"],1)
         self.assertEqual(summary["unbound_decision_count"],1)
         self.assertEqual(summary["invalid_log_file_count"],1)
         self.assertEqual(summary["executed_action_count"],0)

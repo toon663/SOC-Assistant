@@ -78,6 +78,8 @@ try {
     [ordered]@{schema_version=1;environment='test';kind='importer';window_id=($runId + '_importer');host=[Net.Dns]::GetHostName();started_at=$importerStarted;ended_at=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $windowRoot ($runId + '_importer.json')) -Encoding UTF8
     $stage = 'overlay'
     $effective = (Invoke-PrivatePython -Name 'overlay' -Arguments @('-m','Prognostic_Agent.operator_overlay','--inventory',$imported.inventory_path,'--overlay',$overlayPath,'--output-dir',(Join-Path $runDir 'effective-inventory'),'--environment','test')).Result
+    $stage = 'publish_inventory'
+    $published = (Invoke-PrivatePython -Name 'publication' -Arguments @('-m','Prognostic_Agent.inventory_publication','--inventory',$effective.inventory_path,'--raw-export',$rawPath,'--overlay',$overlayPath)).Result
     $runTime = [DateTime]::UtcNow
     $inventoryHash = (Get-FileHash -LiteralPath $effective.inventory_path -Algorithm SHA256).Hash.ToLowerInvariant()
     $evaluationId = 'shadow:' + $runTime.ToString('yyyy-MM-dd') + ':inventory:' + $inventoryHash
@@ -93,7 +95,7 @@ try {
     $weeklyLegacy = (Invoke-PrivatePython -Name 'weekly_with_legacy' -Arguments ($weeklyArguments + '--include-legacy')).Result
     $stage = 'privacy_audit'
     $audit = (Invoke-PrivatePython -Name 'privacy' -Arguments @('-m','Prognostic_Agent.privacy_audit','--raw-export',$rawPath,'--output-dir',(Join-Path $runDir 'privacy'),'--environment','test')).Result
-    $summary = [ordered]@{schema_version=1;environment='test';evaluation_id=$evaluationId;inventory_sha256=$inventoryHash;run_directory=$runDir;batch=$batch.Result;weekly=$weekly;weekly_with_legacy=$weeklyLegacy;privacy_audit=$audit}
+    $summary = [ordered]@{schema_version=1;environment='test';evaluation_id=$evaluationId;inventory_sha256=$inventoryHash;publication=$published;run_directory=$runDir;batch=$batch.Result;weekly=$weekly;weekly_with_legacy=$weeklyLegacy;privacy_audit=$audit}
     $summary | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath (Join-Path $runDir 'daily_summary.json') -Encoding UTF8
     # Full outputs stay private; console contains counts and artifact paths only.
     [pscustomobject]@{environment='test';run_directory=$runDir;evaluation_id=$evaluationId;processed_count=$batch.Result.processed_count;already_assessed_count=$batch.Result.already_assessed_count;fresh_incident_count=$batch.Result.fresh_incident_count;fresh_additive_fields_confirmed=$batch.Result.source_inspection.fresh_additive_fields_confirmed;status_counts=$batch.Result.status_counts;weekly_report=$weekly.report_file;weekly_with_legacy_report=$weeklyLegacy.report_file;privacy_clean=$audit.clean} | ConvertTo-Json -Depth 5
